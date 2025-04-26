@@ -11,6 +11,12 @@ if (!filePath || !currentLanguage){
     process.exit(1);
 }
 
+/* PASSWORD GENERATOR */
+function generatePassword(passwordLength = 14){
+    const usableCharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({passwordLength}, () => usableCharacters[Math.floor(Math.random() * usableCharacters.length)]).join('');
+}
+
 async function main() {
     const client = new MongoClient(process.env.MONGODB_URI); 
 
@@ -29,11 +35,11 @@ async function main() {
             fullName: currentRow['fullName'], 
             primaryEmail: currentRow['primaryEmail'], 
             secondaryEmail: currentRow['secondaryEmail'], 
+            currentPassword: generatePassword(14),
             oralRounds: currentRow['oralRounds'], 
-            currentLanguage: currentLanguage
+            currentLanguage: currentLanguage,
+            currentRole: 'Judge'
         }));
-
-        /* PASSWORD GENERATOR */
 
         /* INSERT INTO MONGODB */
         const finalResult = await collection.insertMany(allJudges); 
