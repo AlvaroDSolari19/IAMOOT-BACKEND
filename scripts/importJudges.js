@@ -14,7 +14,7 @@ if (!filePath || !currentLanguage){
 /* PASSWORD GENERATOR */
 function generatePassword(passwordLength = 14){
     const usableCharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    return Array.from({passwordLength}, () => usableCharacters[Math.floor(Math.random() * usableCharacters.length)]).join('');
+    return Array.from({length: passwordLength}, () => usableCharacters[Math.floor(Math.random() * usableCharacters.length)]).join('');
 }
 
 async function main() {
@@ -29,7 +29,7 @@ async function main() {
         const workbook = XLSX.readFile(filePath); 
         const sheetName = workbook.SheetNames[0];
         const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]); 
-        
+
         /* TRANSFORM DATA */
         const allJudges = rawData.map( currentRow => ({
             fullName: currentRow['fullName'], 
