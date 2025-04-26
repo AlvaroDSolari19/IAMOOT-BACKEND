@@ -23,6 +23,7 @@
     "dropbox": "^10.34.0",
     "express": "^5.1.0",
     "mongodb": "^6.16.0",
+    "node-fetch": "^3.3.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
