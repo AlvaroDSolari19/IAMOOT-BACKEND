@@ -1,5 +1,6 @@
 require('dotenv').config(); 
 const express = require('express'); 
+const cors = require('cors');
 const { MongoClient } = require('mongodb');
 const { Dropbox } = require ('dropbox'); 
 
@@ -26,11 +27,50 @@ async function connectToMongoDB(){
 
 connectToMongoDB(); 
 
+/* MIDDLEWARE */
+app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(express.json()); 
+
 /* ROUTES */
 app.get('/', (req, res) => {
     res.send(`Welcome to the IAMOOT Dropbox API`); 
 })
 
+app.post('/api/login', async (req, res) => {
+
+    const { userEmail, userPass } = req.body;
+
+    try {
+        
+        /* Search for currentJudge by userEmail while case insensitive by using a regex expression. */
+        const currentJudge = await judgesCollection.findOne({
+            primaryEmail: { $regex: `^${userEmail}$`, $options: 'i' }
+        });
+
+        /* If the currentJudge was not found by the email provided, return an error code of 401. */
+        if (!currentJudge) { 
+            return res.status(401).json({ message: 'Invalid email' });
+        }
+
+        /* If currentJudge.currentPassword does not match what was in the req.body.userPass, then return an error code of 401. */
+        if (currentJudge.currentPassword !== userPass){
+            return res.status(401).json({ message: 'Invalid password' });
+        }
+
+        res.json({
+            currentName: currentJudge.fullName, 
+            currentRole: currentJudge.currentRole,  
+        })
+
+
+    } catch (err) {
+        console.error('Login error:', err); 
+        res.status(500).json({ message: 'Server error' });
+    }
+
+})
+
+/* DROPBOX API */
 app.get('/files', async (req, res) => {
     try{
         const folderPath = '/IAMOOT 2025'; 
@@ -41,19 +81,6 @@ app.get('/files', async (req, res) => {
     } catch (error) {
         console.error(`Error fetching files from Dropbox: `, error); 
         res.status(500).json({error: 'Could not fetch files from Dropbox'})
-    }
-})
-
-app.get('/add-test-judge', async (req, res) => {
-    try {
-        const result = await judgesCollection.insertOne({
-            name: "Test Judge", 
-            email: "test@example.com", 
-            language: "ENG"
-        });
-        res.send("Judge inserted!");
-    } catch (err){
-        res.status(500).send(`Error inserting judge`);
     }
 })
 
