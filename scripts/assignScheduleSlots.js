@@ -20,6 +20,7 @@ async function main() {
             'CT16', 'CT17', 'C117'
         ];
 
+        /* GENERATE ALL POSSIBLE MATCH SLOTS */
         const availableMatchSlots = []; 
 
         for (const matchDate of matchDates){
@@ -35,6 +36,30 @@ async function main() {
         }
 
         console.log(`Total available slots: ${availableMatchSlots.length}`);
+
+        /* FETCH ALL THE MATCHES */
+        const allMatches = await matchesCollection.find().toArray(); 
+        console.log(`Total matches found: ${allMatches.length}`);
+
+        /* MAP THAT TRACKS THE DATES THAT A TEAM IS SCHEDULED TO COMPETE ON */
+        const teamScheduleMap = {};
+
+        /* TRACK LANGUAGES ASSIGNED PER DAY */
+        const dailyLanguageCount = {
+            '2025-05-19': { English: 0, Spanish: 0, Portuguese: 0 },
+            '2025-05-20': { English: 0, Spanish: 0, Portuguese: 0 }, 
+            '2025-05-21': { English: 0, Spanish: 0, Portuguese: 0 }
+        }
+
+        /* ESTABLISH LANGUAGE LIMITS PER DAY */
+        const maxLanguagePerDay = {
+            English: 2,
+            Spanish: 11, 
+            Portuguese: 4
+        }
+
+        /* TRACK USED SLOTS */
+        const usedSlots = new Set(); 
 
     } catch (err) {
         console.error('Error: ', err); 
