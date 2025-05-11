@@ -23,7 +23,12 @@ async function main(){
             if (!teamsByLanguage[currentLanguage]){
                 teamsByLanguage[currentLanguage] = []; 
             }
-            teamsByLanguage[currentLanguage].push(currentTeam); 
+            teamsByLanguage[currentLanguage].push({
+                ...currentTeam,
+                hasBeenState: false, 
+                hasBeeenVictim: false, 
+                scheduledDays: new Set()
+            }); 
         }
 
         for (const currentLanguage in teamsByLanguage){

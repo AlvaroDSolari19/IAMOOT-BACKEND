@@ -27,17 +27,13 @@ async function main(){
         /* TRANSFORM DATA */
         const allTeams = rawData.map( currentRow => ({
             teamID: currentRow['TeamNumber'],
-            teamLanguage: currentRow['Language'],
             universityName: currentRow['University'],
-            teamMembers: [{firstMember: 'Somebody'}, {secondMember: 'Someone'}], 
-            numberOfMatches: 0, 
+            teamLanguage: currentRow['Language'],
+            teamMembers: [{firstMember: 'Somebody'}, {secondMember: 'Someone'}],  
             preliminaryWins: 0, 
             preliminaryLosses: 0, 
-            hasBeenState: false,
-            hasBeenVictim: false,
-            participatedFirstDay: false, 
-            participatedSecondDay: false, 
-            participatedThirdDay: false
+            averageMemoScore: 0, 
+            advancedRound: false
         }));
 
         /* INSERT INTO MONGODB */
