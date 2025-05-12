@@ -70,6 +70,22 @@ app.post('/api/login', async (req, res) => {
 
 })
 
+app.get('/api/preliminary-matches', async (req, res) => {
+    try {
+        const db = client.db('IAMOOT-DB');
+        const matchesCollection = db.collection('preliminaryMatches'); 
+
+        const { matchDate } = req.query; 
+        const dateFilter = matchDate ? { matchDate } : {}; 
+
+        const allMatches = await matchesCollection.find(dateFilter).toArray(); 
+        res.json(allMatches); 
+    } catch (err){
+        console.error('Error retrieving matches: ', err); 
+        res.status(500).json({ error: 'Internal server error' });
+    }
+})
+
 /* DROPBOX API */
 app.get('/files', async (req, res) => {
     try{
