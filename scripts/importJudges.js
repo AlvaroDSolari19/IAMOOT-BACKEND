@@ -23,26 +23,39 @@ async function main() {
     try{
         await client.connect(); 
         const db = client.db('IAMOOT-DB');
-        const collection = db.collection('judges'); 
+        const judgeCollection = db.collection('preliminaryJudges'); 
 
-        /* READ EXCEEL FILES */
+        /* READ EXCEL FILE */
         const workbook = XLSX.readFile(filePath); 
         const sheetName = workbook.SheetNames[0];
         const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]); 
 
+        /* ADD ID TO THE JUDGES */
+        let baseID; 
+        if (currentLanguage === 'EN') baseID = 1000; 
+        else if (currentLanguage === 'SPA') baseID = 2000; 
+        else if (currentLanguage === 'POR') baseID = 3000;
+        else {
+            console.error(`Invalid language code: ${currentLanguage}`);
+            process.exit(1); 
+        } 
+
+        const lastJudge = await judgeCollection.find({ currentLanguage }).sort({ judgeID: -1 }).limit(1).toArray(); 
+        let nextJudgeID = lastJudge.length > 0 ? lastJudge[0].judgeID + 1 : baseID; 
+
         /* TRANSFORM DATA */
         const allJudges = rawData.map( currentRow => ({
+            judgeID: nextJudgeID++, 
             fullName: currentRow['fullName'], 
             primaryEmail: currentRow['primaryEmail'], 
             secondaryEmail: currentRow['secondaryEmail'], 
             currentPassword: generatePassword(14),
-            oralRounds: currentRow['oralRounds'], 
             currentLanguage: currentLanguage,
             currentRole: 'Judge'
         }));
 
         /* INSERT INTO MONGODB */
-        const finalResult = await collection.insertMany(allJudges); 
+        const finalResult = await judgeCollection.insertMany(allJudges); 
         console.log(`Succesfully inserted ${finalResult.insertedCount} judges`);
         
     } catch (err){
