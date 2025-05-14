@@ -8,7 +8,7 @@ router.post('/login', async (req, res) => {
 
     try {
         
-        const judgesCollection = getCollection('judges'); 
+        const judgesCollection = getCollection('preliminaryJudges'); 
 
         /* Search for currentJudge by userEmail while case insensitive by using a regex expression. */
         const currentJudge = await judgesCollection.findOne({
