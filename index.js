@@ -7,7 +7,7 @@ const { connectToMongoDB } = require('./db');
 const loginRoute = require('./routes/login');
 const adminTeamsRoute = require('./routes/adminTeams');
 const adminPrelimsRoute = require('./routes/adminPrelims'); 
-const judgeOralRoundsRoutes = require('./routes/judgeOralRounds')
+const judgeOralRoundsRoutes = require('./routes/judgeOralRounds');
 
 const app = express(); 
 const port = 3000; 
