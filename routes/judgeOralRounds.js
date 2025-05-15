@@ -27,15 +27,24 @@ router.get('/oralrounds/match/:matchID', async (req, res) => {
 
     try { 
         const matchesCollection = getCollection('preliminaryMatches'); 
+        const speakerCollection = getCollection('speakers'); 
+
         const currentMatch = await matchesCollection.findOne({ matchID: matchID });
-        
+
         if (!currentMatch){
             return res.status(404).json({ message: 'Match not found' });
         }
 
+        const { firstTeam, secondTeam } = currentMatch;
+
+        const allSpeakers = await speakerCollection.find({ speakerID: { $in: [`${firstTeam}A`, `${firstTeam}B`, `${secondTeam}A`, `${secondTeam}B`]}}).toArray(); 
+        const speakerInfo = allSpeakers.map(currentSpeaker => ({
+            speakerID: currentSpeaker.speakerID, 
+            speakerName: currentSpeaker.speakerName
+        }));
+
         /* This is saying get the value of matchID in currentMatch and put it in databaseMatchID */ 
-        const { matchID: databaseMatchID, firstTeam, secondTeam } = currentMatch;
-        res.json({ matchID: databaseMatchID, firstTeam, secondTeam })
+        res.json({ matchID, firstTeam, secondTeam, allSpeakers: speakerInfo})
 
     } catch (error){
         console.error(`Error retrieving match ${matchID}: ${error}`);
