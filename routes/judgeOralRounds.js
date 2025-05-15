@@ -28,6 +28,7 @@ router.get('/oralrounds/match/:matchID', async (req, res) => {
     try { 
         const matchesCollection = getCollection('preliminaryMatches'); 
         const currentMatch = await matchesCollection.findOne({ matchID: matchID });
+        
         if (!currentMatch){
             return res.status(404).json({ message: 'Match not found' });
         }
