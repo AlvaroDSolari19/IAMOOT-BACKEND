@@ -3,12 +3,8 @@ const router = express.Router();
 const { getCollection } = require('../db'); 
 
 router.get('/oralrounds/judge/:judgeID', async (req, res) => {
-    console.log("Incoming judgeID:", req.params.judgeID);
 
     const judgeID = Number(req.params.judgeID); 
-    console.log(judgeID);
-    console.log("Type of judgeID:", typeof judgeID);
-
 
     try {
         const matchesCollection = getCollection('preliminaryMatches'); 
