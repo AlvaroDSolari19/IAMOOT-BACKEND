@@ -10,10 +10,14 @@ router.get('/oralrounds/judge/:judgeID', async (req, res) => {
         const matchesCollection = getCollection('preliminaryMatches'); 
 
         const assignedMatches = await matchesCollection.find({
-            judgesAssigned: judgeID
+            judgesAssigned: judgeID,
         }).toArray();
 
-        res.json(assignedMatches); 
+        const ungradedMatches = assignedMatches.filter(currentMatch => {
+            return !currentMatch.gradedJudges || !currentMatch.gradedJudges.includes(judgeID); 
+        })
+
+        res.json(ungradedMatches); 
 
     } catch (error) { 
         console.error(`Error fetching judge matches: ${error}`);
