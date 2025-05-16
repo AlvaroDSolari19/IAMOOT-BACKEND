@@ -51,6 +51,42 @@ router.get('/oralrounds/match/:matchID', async (req, res) => {
         res.status(500).json({  message: 'Server error while retrieving match' })
     }
 
-})
+});
+
+router.post('/oralrounds/submitscores', async (req, res) => { 
+    const { judgeID, matchID, finalScores } = req.body; 
+
+    if (!judgeID || !matchID || !Array.isArray(finalScores)){ 
+        return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    if (finalScores.length !== 4){
+        return res.status(400).json({ message: 'Exactly 4 scores must be submitted'});
+    }
+
+    try{
+
+        const speakersCollection = getCollection('speakers'); 
+        const matchesCollection = getCollection('preliminaryMatches'); 
+
+        for (const { speakerID, finalScore } of finalScores){
+            await speakersCollection.updateOne(
+                { speakerID }, 
+                { $push: { receivedScores: finalScore}}
+            )
+        }
+
+        await matchesCollection.updateOne(
+            { matchID },
+            { $addToSet: {gradedJudges: judgeID}} 
+        )
+
+        res.status(200).json({ message: 'Scores submitted successfully' });
+
+    } catch (error){ 
+        console.error('Error submitting scores: ', error); 
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 
 module.exports = router; 
