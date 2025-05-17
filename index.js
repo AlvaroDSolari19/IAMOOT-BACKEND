@@ -18,7 +18,7 @@ connectToMongoDB();
 const dbx = new Dropbox({ accessToken: process.env.DROPBOX_ACCESS_TOKEN });
 
 /* MIDDLEWARE */
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors({ origin: '*' }));
 app.use(express.json()); 
 
 /* ROUTES */
