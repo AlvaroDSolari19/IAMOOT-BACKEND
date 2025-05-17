@@ -28,15 +28,24 @@ router.get('/oralrounds/judge/:judgeID', async (req, res) => {
 
 router.get('/oralrounds/match/:matchID', async (req, res) => { 
     const matchID = req.params.matchID; 
+    const judgeID = Number(req.headers['judgeid']);
 
     try { 
         const matchesCollection = getCollection('preliminaryMatches'); 
         const speakerCollection = getCollection('speakers'); 
 
         const currentMatch = await matchesCollection.findOne({ matchID: matchID });
-
+        
         if (!currentMatch){
             return res.status(404).json({ message: 'Match not found' });
+        }
+
+        if (!currentMatch.judgesAssigned?.includes(judgeID)){
+            return res.status(403).json({ message: 'Access denied. You are not assigned to this match.'});
+        }
+        
+        if (currentMatch.gradedJudges?.includes(judgeID)){
+            return res.status(403).json({ message: 'You have already graded this match.'})
         }
 
         const { firstTeam, secondTeam } = currentMatch;
