@@ -8,7 +8,7 @@ let dbInstance = null;
 async function connectToMongoDB(){
     try {
         await client.connect(); 
-        dbInstance = client.db('IAMOOT-DB'); 
+        dbInstance = client.db(process.env.MONGODB_DB_NAME); 
         console.log('Connected to MongoDB Atlas'); 
     } catch (err){
         console.error('Failed to connect to MongoDB: ', err); 
