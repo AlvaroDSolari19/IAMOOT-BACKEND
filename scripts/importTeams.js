@@ -12,11 +12,11 @@ if (!filePath){
 
 async function main(){
 
-    const client = new MongoClient(process.env.MONGODB_URI);
+    const client = new MongoClient(process.env.MONGODB_URI_PROD);
 
     try {
         await client.connect(); 
-        const db = client.db('IAMOOT-DB');
+        const db = client.db('ProdCluster');
         const collection = db.collection('teams'); 
 
         /* READ EXCEL FILES */
@@ -32,7 +32,7 @@ async function main(){
             teamMembers: [{firstMember: 'Somebody'}, {secondMember: 'Someone'}],  
             preliminaryWins: 0, 
             preliminaryLosses: 0, 
-            averageMemoScore: 0, 
+            averageMemoScore: 0.0, 
             advancedRound: false
         }));
 

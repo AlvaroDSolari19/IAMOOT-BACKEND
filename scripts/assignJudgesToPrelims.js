@@ -1,19 +1,19 @@
 require('dotenv').config(); 
 const { MongoClient } = require('mongodb'); 
 
-const client = new MongoClient(process.env.MONGODB_URI); 
+const client = new MongoClient(process.env.MONGODB_URI_PROD); 
 
 function getJudgeCountForMatch(someLanguage){
     if (someLanguage === 'English') return 7; 
     if (someLanguage === 'Portuguese') return (Math.random() < 0.5 ? 3 : 5); 
-    if (someLanguage === 'Spanish') return (Math.random() < 0.5 ? 7 : 9);
+    if (someLanguage === 'Spanish') return 9;//(Math.random() < 0.5 ? 7 : 9);
 }
 
 async function main() { 
     try {
 
         await client.connect(); 
-        const db = client.db('IAMOOT-DB');
+        const db = client.db('ProdCluster');
 
         const matchesCollection = db.collection('preliminaryMatches'); 
         const judgesCollection = db.collection('preliminaryJudges');
@@ -165,7 +165,6 @@ async function main() {
                 );
 
                 if (matchUpdateResult.modifiedCount === 1){
-                    console.log(`Updated match ${matchID} with ${judgeIDs.length} judges.`);
                     successfulWrites++;
                 } else {
                     console.warn(`No document modified for match ${matchID}`);

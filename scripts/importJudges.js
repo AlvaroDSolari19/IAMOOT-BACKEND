@@ -18,11 +18,11 @@ function generatePassword(passwordLength = 14){
 }
 
 async function main() {
-    const client = new MongoClient(process.env.MONGODB_URI); 
+    const client = new MongoClient(process.env.MONGODB_URI_PROD); 
 
     try{
         await client.connect(); 
-        const db = client.db('IAMOOT-DB');
+        const db = client.db('ProdCluster');
         const judgeCollection = db.collection('preliminaryJudges'); 
 
         /* READ EXCEL FILE */
