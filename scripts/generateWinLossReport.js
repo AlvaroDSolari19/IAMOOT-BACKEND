@@ -2,11 +2,11 @@ const { MongoClient } = require ('mongodb');
 require('dotenv').config(); 
 
 async function main(){
-    const client = new MongoClient(process.env.MONGODB_URI);
+    const client = new MongoClient(process.env.MONGODB_URI_PROD);
 
     try {
         await client.connect(); 
-        const db = client.db('IAMOOT-DB'); 
+        const db = client.db('ProdCluster'); 
 
         const matchesCollection = db.collection('preliminaryMatches'); 
         const teamsCollection = db.collection('teams'); 

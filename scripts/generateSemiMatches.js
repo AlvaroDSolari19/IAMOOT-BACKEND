@@ -2,12 +2,12 @@ const { MongoClient } = require('mongodb');
 require('dotenv').config(); 
 
 async function main(){
-    const client = new MongoClient(process.env.MONGODB_URI); 
+    const client = new MongoClient(process.env.MONGODB_UR_PROD); 
 
     try {
 
         await client.connect(); 
-        const db = client.db('IAMOOT-DB'); 
+        const db = client.db('ProdCluster'); 
 
         const teamsCollection = db.collection('teams'); 
         const semiTeamsCollection = db.collection('semiTeams'); 
