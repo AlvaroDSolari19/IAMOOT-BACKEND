@@ -32,10 +32,14 @@ async function main(){
 
         }
 
+        const allTeams = await teamsCollection.find({}).toArray(); 
         let updatedTeams = 0; 
 
-        for (const [teamID, numberOfWins] of teamWinMap.entries()){
-            const numberOfLosses = teamLossMap.get(teamID) || 0; 
+        for (const currentTeam of allTeams){
+
+            const teamID = currentTeam.teamID; 
+            const numberOfWins = teamWinMap.get(teamID) || 0; 
+            const numberOfLosses = teamLossMap.get(teamID) || 0;
 
             //console.log(`Team ${teamID} -> Wins: ${numberOfWins}, Losses: ${numberOfLosses}`); 
             const updateResult = await teamsCollection.updateOne(

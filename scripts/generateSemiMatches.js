@@ -2,7 +2,7 @@ const { MongoClient } = require('mongodb');
 require('dotenv').config(); 
 
 async function main(){
-    const client = new MongoClient(process.env.MONGODB_UR_PROD); 
+    const client = new MongoClient(process.env.MONGODB_URI_PROD); 
 
     try {
 
@@ -15,7 +15,7 @@ async function main(){
 
         console.log('Connected to MongoDB'); 
 
-        const advancingTeamIDs = [102, 145, 201, 235];
+        const advancingTeamIDs = [273, 132, 138, 170, 102, 173, 201, 203, 231, 232, 233, 235, 241, 243, 244, 245, 249, 270, 133, 103, 140, 142, 143, 174, 274, 271];
         
         await semiTeamsCollection.deleteMany({});
 
