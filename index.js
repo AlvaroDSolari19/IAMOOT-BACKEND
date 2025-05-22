@@ -7,6 +7,7 @@ const { connectToMongoDB } = require('./db');
 const loginRoute = require('./routes/login');
 const adminTeamsRoute = require('./routes/adminTeams');
 const adminPrelimsRoute = require('./routes/adminPrelims'); 
+const adminSemisRoute = require('./routes/adminSemis')
 const judgeOralRoundsRoutes = require('./routes/judgeOralRounds');
 
 const app = express(); 
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use('/api', loginRoute); 
 app.use('/api', adminTeamsRoute); 
 app.use('/api', adminPrelimsRoute); 
+app.use('/api', adminSemisRoute);
 app.use('/api', judgeOralRoundsRoutes);
 
 /* DROPBOX API */
