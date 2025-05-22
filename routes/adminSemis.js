@@ -29,4 +29,15 @@ router.get('/admin/semifinal-matches', async (req, res) => {
     }
 })
 
+router.get('/admin/semi-team-rankings', async(req, res) => {
+    try {
+        const semiTeamsCollection = getCollection('semiTeams'); 
+        const allTeams = await semiTeamsCollection.find({}).toArray(); 
+        res.json(allTeams); 
+    } catch (err) {
+        console.error('Error fetching semi team rankings: ', err); 
+        res.status(500).json({ error: 'Internal server error' });
+    }
+})
+
 module.exports = router; 
