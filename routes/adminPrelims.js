@@ -5,13 +5,14 @@ const { getCollection } = require ('../db');
 router.get('/admin/speakers', async (req, res) => {
     try {
         const speakersCollection = getCollection('speakers');
+        const teamsCollection = getCollection('teams'); 
         
         const requestedLanguage = req.query.language; 
         if (!requestedLanguage){
             return res.status(400).json({ error: 'Missing language parameter' });
         }
 
-        const filteredSpeakers = await speakersCollection
+        const matchingSpeakers = await speakersCollection
             .find({
                 speakerLanguage: requestedLanguage, 
                 preliminaryAverageScore: { $exists: true }
@@ -19,7 +20,25 @@ router.get('/admin/speakers', async (req, res) => {
             .sort({ preliminaryAverageScore: -1 })
             .toArray(); 
 
-        res.json(filteredSpeakers); 
+        /* Gets all the teamIDs from matchingSpeakers and stores them in an Array */
+        const uniqueTeamIDs = [...new Set(matchingSpeakers.map(speakerDoc => speakerDoc.teamID))];
+
+        /* Goes through all the teams that appear in uniqueTeamIDs and stores them in matchingTeamDocuments */
+        const matchingTeamDocuments = await teamsCollection.find({
+            teamID: { $in: uniqueTeamIDs }
+        }).toArray(); 
+
+        /* Object.fromEntries takes an Array of [key, value] and turns it into an Object */
+        const teamIDToSchoolNameMap = Object.fromEntries(
+            matchingTeamDocuments.map(teamDoc => [teamDoc.teamID, teamDoc.universityName])
+        );
+
+        const enrichedSpeakerList = matchingSpeakers.map(speakerDoc => ({
+            ...speakerDoc, 
+            speakerSchool: teamIDToSchoolNameMap[speakerDoc.teamID] || 'Unknown'
+        }));
+
+        res.json(enrichedSpeakerList); 
 
     } catch (err) {
         console.error('Error fetching speaker rankings: ', err); 
