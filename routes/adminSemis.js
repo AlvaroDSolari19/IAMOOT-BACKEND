@@ -7,7 +7,12 @@ router.get('/admin/semifinal-matches', async (req, res) => {
         const matchesCollection = getCollection('preliminaryMatches');
         const teamsCollection = getCollection('teams');
 
-        const semifinalMatches = await matchesCollection.find({ matchID: { $gte: 100 } }).toArray(); 
+        const semifinalMatchIDs = [
+            "100", "101", "102", "103", "104", "105", "106", 
+            "107", "108", "109", "110", "111", "112"
+        ]
+
+        const semifinalMatches = await matchesCollection.find({ matchID: { $in: semifinalMatchIDs } }).toArray(); 
         const allTeams = await teamsCollection.find({}).toArray(); 
 
         const teamMap = {}; 
