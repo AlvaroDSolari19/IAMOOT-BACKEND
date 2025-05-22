@@ -2,6 +2,31 @@ const express = require ('express');
 const router = express.Router(); 
 const { getCollection } = require ('../db'); 
 
+router.get('/admin/speakers', async (req, res) => {
+    try {
+        const speakersCollection = getCollection('speakers');
+        
+        const requestedLanguage = req.query.language; 
+        if (!requestedLanguage){
+            return res.status(400).json({ error: 'Missing language parameter' });
+        }
+
+        const filteredSpeakers = await speakersCollection
+            .find({
+                speakerLanguage: requestedLanguage, 
+                preliminaryAverageScore: { $exists: true }
+            })
+            .sort({ preliminaryAverageScore: -1 })
+            .toArray(); 
+
+        res.json(filteredSpeakers); 
+
+    } catch (err) {
+        console.error('Error fetching speaker rankings: ', err); 
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 router.get('/admin/preliminary-matches', async(req, res) => {
 
     try {
