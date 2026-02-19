@@ -28,7 +28,5 @@ function getCollection(collectionName){
 
 module.exports = {
     connectToMongoDB, 
-    getDb,
-    getCollection, 
-    client
+    getCollection
 }

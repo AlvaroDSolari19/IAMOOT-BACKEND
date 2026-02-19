@@ -11,11 +11,8 @@ const adminSemisRoute = require('./routes/adminSemis')
 const judgeOralRoundsRoutes = require('./routes/judgeOralRounds');
 const loginWrittenRoute = require('./routes/loginWritten');
 
-
 const app = express(); 
 const port = process.env.PORT || 3000; 
-
-connectToMongoDB();
 
 /* DROPBOX SETUP */
 const dbx = new Dropbox({ accessToken: process.env.DROPBOX_ACCESS_TOKEN });
@@ -32,20 +29,16 @@ app.use('/api', adminSemisRoute);
 app.use('/api', judgeOralRoundsRoutes);
 app.use('/api', loginWrittenRoute);
 
-/* DROPBOX API */
-app.get('/files', async (req, res) => {
-    try{
-        const folderPath = '/IAMOOT 2025'; 
-        const listResponse = await dbx.filesListFolder({ path: folderPath}); 
-
-        res.json(listResponse.result.entries); 
-
-    } catch (error) {
-        console.error(`Error fetching files from Dropbox: `, error); 
-        res.status(500).json({error: 'Could not fetch files from Dropbox'})
-    }
+app.get('/health', (req, res) => {
+    res.json({ ok: true });
 })
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-});
+async function startServer(){
+    await connectToMongoDB();
+    app.listen(port, () => console.log(`Server is running on port ${port}`));
+}
+
+startServer().catch( (err) => {
+    console.error(`Server failed to start: ${err}`);
+    process.exit(1); 
+})
