@@ -9,6 +9,8 @@ const adminTeamsRoute = require('./routes/adminTeams');
 const adminPrelimsRoute = require('./routes/adminPrelims'); 
 const adminSemisRoute = require('./routes/adminSemis')
 const judgeOralRoundsRoutes = require('./routes/judgeOralRounds');
+const loginWrittenRoute = require('./routes/loginWritten');
+
 
 const app = express(); 
 const port = process.env.PORT || 3000; 
@@ -28,6 +30,7 @@ app.use('/api', adminTeamsRoute);
 app.use('/api', adminPrelimsRoute); 
 app.use('/api', adminSemisRoute);
 app.use('/api', judgeOralRoundsRoutes);
+app.use('/api', loginWrittenRoute);
 
 /* DROPBOX API */
 app.get('/files', async (req, res) => {

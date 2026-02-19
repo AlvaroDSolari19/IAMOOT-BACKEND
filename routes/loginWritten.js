@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router(); 
 const { getCollection } = require('../db'); 
 
-router.post('/login', async (req, res) => {
+router.post('/loginWritten', async (req, res) => {
 
     const { userEmail, userPass } = req.body;
 
