@@ -10,6 +10,7 @@ const adminPrelimsRoute = require('./routes/adminPrelims');
 const adminSemisRoute = require('./routes/adminSemis')
 const judgeOralRoundsRoutes = require('./routes/judgeOralRounds');
 const loginWrittenRoute = require('./routes/loginWritten');
+const writtenParticipantsAuth = require('./routes/writtenParticipantsAuth'); 
 
 const app = express(); 
 const port = process.env.PORT || 3000; 
@@ -28,6 +29,7 @@ app.use('/api', adminPrelimsRoute);
 app.use('/api', adminSemisRoute);
 app.use('/api', judgeOralRoundsRoutes);
 app.use('/api', loginWrittenRoute);
+app.use('/api', writtenParticipantsAuth);
 
 app.get('/health', (req, res) => {
     res.json({ ok: true });
