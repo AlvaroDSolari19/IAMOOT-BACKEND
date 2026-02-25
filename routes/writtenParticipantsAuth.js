@@ -52,4 +52,54 @@ router.post('/participants/request-password', async (req, res) => {
     }
 });
 
+/****************
+ * SET PASSWORD *
+ ****************/
+router.post('/participants/set-password', async (req, res) => {
+
+    try {
+        const { teamID, resetToken, newPassword } = req.body; 
+        if (!teamID || !resetToken || !newPassword) return res.status(400).json({ ok: false });
+
+        const teamIDString = String(teamID).trim(); 
+        const tokenString = String(resetToken).trim(); 
+
+        const writtenTeams = getCollection('writtenTeams'); 
+        const teamRecord = await writtenTeams.findOne({ teamID: teamIDString});
+        if (!teamRecord) return res.status(400).json({ ok: false }); 
+        if (!teamRecord.resetTokenHash || !teamRecord.resetTokenExpiresAt) return res.status(400).json({ ok: false });
+
+        const expiresTime = new Date(teamRecord.resetTokenExpiresAt).getTime();
+        if (Number.isNaN(expiresTime) || Date.now() > expiresTime) return res.status(400).json({ ok: false });
+
+        /* Reset tokens are verified using SHA-256 because it is deterministic. 
+         * We hash the incoming token and compare it to the stored hash value. */
+        const incomingHash = crypto.createHash('sha256').update(tokenString).digest('hex'); 
+        if (incomingHash !== teamRecord.resetTokenHash) return res.status(400).json({ ok: false });
+
+        /* Passwords are stored using bcrypt which generates a random salt internally. 
+         * bcrypt hashes are different each time and bcrypt.compare() handles verification. */ 
+        const saltRounds = 12; 
+        const passwordHash = await bcrypt.hash(newPassword, saltRounds); 
+
+        await writtenTeams.updateOne(
+            { _id: teamRecord._id },
+            {
+                $set: { passwordHash: passwordHash }, 
+                $unset: {
+                    resetTokenHash: '', 
+                    resetTokenExpiresAt: '', 
+                    resetTokenCreatedAt: ''
+                }
+            }
+        );
+
+        return res.json({ ok: true });
+
+    } catch (err){
+        return res.status(500).json({ ok: false });
+    }
+
+});
+
 module.exports = router; 
