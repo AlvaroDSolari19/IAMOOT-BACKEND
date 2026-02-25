@@ -4,6 +4,34 @@ const { getCollection } = require ('../db');
 const crypto = require('crypto'); 
 const bcrypt = require('bcryptjs'); 
 
+/*********
+ * LOGIN * 
+ *********/
+router.post('/participants/login', async (req, res) => {
+    
+    try {
+        
+        const { teamID, teamPassword } = req.body; 
+        if (!teamID || !teamPassword) return res.status(400).json({ ok: false }); 
+
+        const teamIDString = String(teamID).trim(); 
+        const passwordString = String(teamPassword); 
+
+        const writtenTeams = getCollection('writtenTeams');
+        const teamRecord = await writtenTeams.findOne({ teamID: teamIDString });
+        if (!teamRecord) return res.status(400).json({ ok: false }); 
+        if (!teamRecord.passwordHash) return res.status(400).json({ ok: false }); 
+
+        const passwordMatch = await bcrypt.compare(passwordString, teamRecord.passwordHash);
+        if (!passwordMatch) return res.status(400).json({ ok: false });
+        
+        return res.json({ ok: true}); 
+    } catch (err) {
+        return res.status(500).json({ ok: false });
+    }
+
+});
+
 /*****************************
  * REQUEST SET PASSWORD LINK *
  *****************************/ 
@@ -14,7 +42,6 @@ router.post('/participants/request-password', async (req, res) => {
     try {
         
         const { teamID, requestEmail } = req.body; 
-        console.log(req.body);
         if (!teamID || !requestEmail) return res.json(genericSuccess); 
 
         const teamIDString = String(teamID).trim();
@@ -22,7 +49,6 @@ router.post('/participants/request-password', async (req, res) => {
 
         const writtenTeams = getCollection('writtenTeams'); 
         const teamRecord = await writtenTeams.findOne({ teamID: teamIDString });
-        console.log()
         if (!teamRecord) return res.json(genericSuccess); 
 
         const emailList = Array.isArray(teamRecord.participantEmails) ? teamRecord.participantEmails : []; 
