@@ -1,8 +1,16 @@
 const express = require('express'); 
 const router = express.Router(); 
 const { getCollection } = require ('../db');
+
 const crypto = require('crypto'); 
 const bcrypt = require('bcryptjs'); 
+const jsonWebToken = require('jsonwebtoken'); 
+
+const requireTeamAuth = require('../middleware/requireTeamAuth');
+
+router.get('/participants/auth-check', requireTeamAuth, (req,res) => {
+    return res.json({ ok: true, teamID: req.authTeamID });
+})
 
 /*********
  * LOGIN * 
@@ -24,8 +32,17 @@ router.post('/participants/login', async (req, res) => {
 
         const passwordMatch = await bcrypt.compare(passwordString, teamRecord.passwordHash);
         if (!passwordMatch) return res.status(400).json({ ok: false });
+
+        const tokenSecretKey = process.env.JWT_SECRET;
+        if (!tokenSecretKey) return res.status(500).json({ ok: false });
+
+        const authToken = jsonWebToken.sign(
+            { teamID: teamRecord.teamID }, 
+            tokenSecretKey, 
+            { expiresIn: '2h' }
+        );
         
-        return res.json({ ok: true}); 
+        return res.json({ ok: true, token: authToken }); 
     } catch (err) {
         return res.status(500).json({ ok: false });
     }
