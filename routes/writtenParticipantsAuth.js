@@ -8,10 +8,6 @@ const jsonWebToken = require('jsonwebtoken');
 
 const requireTeamAuth = require('../middleware/requireTeamAuth');
 
-router.get('/participants/auth-check', requireTeamAuth, (req,res) => {
-    return res.json({ ok: true, teamID: req.authTeamID });
-})
-
 /*********
  * LOGIN * 
  *********/
@@ -144,5 +140,11 @@ router.post('/participants/set-password', async (req, res) => {
     }
 
 });
+
+router.get('/participants/me', requireTeamAuth, (req,res) => {
+    return res.json({ ok: true, teamID: req.authTeamID });
+})
+
+
 
 module.exports = router; 

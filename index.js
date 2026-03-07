@@ -35,6 +35,25 @@ app.get('/health', (req, res) => {
     res.json({ ok: true });
 })
 
+app.get('/api/dropbox/health', async (req, res) => {
+    try {
+        const accountResult = await dbx.usersGetCurrentAccount(); 
+        
+        return res.json({
+            ok: true, 
+            email: accountResult.result.email, 
+            accountId: accountResult.result.account_id,
+            name: accountResult.result.name?.display_name
+        });
+    } catch (error){
+        return res.status(500).json({
+            ok: false, 
+            message: error?.message ?? String(error), 
+            details: error?.error ?? null
+        })
+    }
+})
+
 async function startServer(){
     await connectToMongoDB();
     app.listen(port, () => console.log(`Server is running on port ${port}`));
