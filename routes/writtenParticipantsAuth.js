@@ -8,6 +8,8 @@ const jsonWebToken = require('jsonwebtoken');
 
 const requireTeamAuth = require('../middleware/requireTeamAuth');
 
+const { sendEmail } = require('../services/emailService');
+
 /*********
  * LOGIN * 
  *********/
@@ -83,10 +85,21 @@ router.post('/participants/request-password', async (req, res) => {
             }
         );
 
-        console.log(`PASSWORD RESET LINK: http://localhost:5173/set-password?teamID=${encodeURIComponent(teamIDString)}&token=${rawToken}`);
+        const frontendBaseURL = process.env.FRONTEND_BASE_URL; 
+        if(!frontendBaseURL) throw new Error('Missing FRONTEND_BASE_URL environment variable');
+
+        const resetLink = `${frontendBaseURL}/set-password?teamID=${encodeURIComponent(teamIDString)}&token=${rawToken}`;
+        
+        await sendEmail({
+            recipientEmail: emailNorm, 
+            emailSubject: 'IAMOOT Password Setup Link', 
+            emailText: resetLink
+        });
+
         return res.json(genericSuccess); 
 
     } catch (err) {
+        console.error('REQUEST PASSWORD ERROR: ', err); 
         return res.json(genericSuccess);
     }
 });
@@ -144,7 +157,5 @@ router.post('/participants/set-password', async (req, res) => {
 router.get('/participants/me', requireTeamAuth, (req,res) => {
     return res.json({ ok: true, teamID: req.authTeamID });
 })
-
-
 
 module.exports = router; 
