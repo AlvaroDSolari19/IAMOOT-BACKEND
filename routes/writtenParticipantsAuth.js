@@ -9,6 +9,7 @@ const jsonWebToken = require('jsonwebtoken');
 const requireTeamAuth = require('../middleware/requireTeamAuth');
 
 const { sendEmail } = require('../services/emailService');
+const { buildPasswordResetEmailTemplate } = require('../services/emailTemplates');
 
 /*********
  * LOGIN * 
@@ -90,10 +91,17 @@ router.post('/participants/request-password', async (req, res) => {
 
         const resetLink = `${frontendBaseURL}/set-password?teamID=${encodeURIComponent(teamIDString)}&token=${rawToken}`;
         
+        const emailTemplate = buildPasswordResetEmailTemplate({
+            recipientLanguage: teamRecord.teamLanguage, 
+            accountLabel: `Team ${teamRecord.teamID}`,
+            resetLink
+        })
+
         await sendEmail({
             recipientEmail: emailNorm, 
-            emailSubject: 'IAMOOT Password Setup Link', 
-            emailText: resetLink
+            emailSubject: emailTemplate.emailSubject, 
+            emailText: emailTemplate.emailText, 
+            emailHtml: emailTemplate.emailHtml
         });
 
         return res.json(genericSuccess); 
