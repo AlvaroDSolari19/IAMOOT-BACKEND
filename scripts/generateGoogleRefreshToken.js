@@ -17,14 +17,14 @@ const oauth2Client = new google.auth.OAuth2(
     'http://localhost'
 );
 
-const gmailScopes = [
+const googleScopes = [
     'https://www.googleapis.com/auth/gmail.send'
 ];
 
 const authURL = oauth2Client.generateAuthUrl({
     access_type: 'offline', 
     prompt: 'consent', 
-    scope: gmailScopes
+    scope: googleScopes
 });
 
 console.log(`Open this URL in your browser: ${authURL}`); 
@@ -44,6 +44,7 @@ terminalReader.question('Paste the code here: ', async (authCode) => {
         console.log(); 
         console.log(`Access Token: ${tokenData.access_token}`);
         console.log(`Refresh Token: ${tokenData.refresh_token}`);
+        terminalReader.close(); 
 
     } catch (tokenError){
         console.error(`Error getting tokens: ${tokenError.message}`);
