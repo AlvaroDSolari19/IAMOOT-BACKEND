@@ -1,7 +1,6 @@
 require('dotenv').config(); 
 const express = require('express'); 
 const cors = require('cors');
-const { Dropbox } = require ('dropbox'); 
 const { connectToMongoDB } = require('./db'); 
 
 const loginRoute = require('./routes/login');
@@ -16,7 +15,7 @@ const app = express();
 const port = process.env.PORT || 3000; 
 
 /* DROPBOX SETUP */
-const dbx = new Dropbox({ accessToken: process.env.DROPBOX_ACCESS_TOKEN });
+const { getDropboxClient } = require('./services/dropboxClient');
 
 /* MIDDLEWARE */
 app.use(cors({ origin: '*' }));
@@ -37,8 +36,9 @@ app.get('/health', (req, res) => {
 
 app.get('/api/dropbox/health', async (req, res) => {
     try {
+        const dbx = await getDropboxClient();
         const accountResult = await dbx.usersGetCurrentAccount(); 
-        
+
         return res.json({
             ok: true, 
             email: accountResult.result.email, 
