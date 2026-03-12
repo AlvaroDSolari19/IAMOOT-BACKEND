@@ -173,10 +173,52 @@ router.post('/participants/set-password', async (req, res) => {
 
 });
 
+/***********************************
+ * GET MEMORANDA SUBMISSION STATUS *
+ ***********************************/
+router.get('/participants/memoranda-status', requireTeamAuth, async (req, res) => {
+    
+    try {
+        const teamIDString = String(req.authTeamID).trim();
+        const writtenTeams = getCollection('writtenTeams'); 
+
+        const teamRecord = await writtenTeams.findOne(
+            { teamID: teamIDString }, 
+            { projection: { memorandaSubmission: 1 } }
+        );
+
+        if (!teamRecord) {
+            return res.status(404).json({ ok: false });
+
+        }
+
+        const submissionObject = teamRecord.memorandaSubmission; 
+
+        if (!submissionObject){ 
+            return res.json({
+                ok: true, 
+                hasSubmitted: false 
+            });
+        }
+
+        return res.json({
+            ok: true, 
+            hasSubmitted: true, 
+            submission: submissionObject
+        });
+
+    } catch (statusError) {
+        console.error(`MEMORANDA STATUS ERROR: ${statusError}`);
+        return res.status(500).json({ ok: false });
+    }
+
+});
+
 /***************************
  * UPLOAD FILES TO DROPBOX *
  ***************************/
 router.post('/participants/upload-submission', requireTeamAuth, uploadParticipantFiles, async (req, res) => {
+   
     try { 
 
         const stateFileArray = req.files?.stateMemorandum; 
@@ -212,6 +254,22 @@ router.post('/participants/upload-submission', requireTeamAuth, uploadParticipan
             mode: { '.tag': 'overwrite' }
         });
 
+        const writtenTeams = getCollection('writtenTeams'); 
+
+        await writtenTeams.updateOne(
+            { teamID: teamIDString }, 
+            {
+                $set: {
+                    memorandaSubmission: {
+                        hasSubmitted: true, 
+                        submittedAt: new Date(), 
+                        stateOriginalFilename: stateFileObject.originalname, 
+                        victimOriginalFilename: victimFileObject.originalname
+                    }
+                }
+            }
+        );
+
         return res.json({ 
             ok: true,
             uploadedFiles: {
@@ -225,6 +283,7 @@ router.post('/participants/upload-submission', requireTeamAuth, uploadParticipan
         console.error('UPLOAD ROUTE ERROR JSON:', JSON.stringify(uploadError, null, 2));
         return res.status(500).json({ ok: false });
     }
+
 });
 
 module.exports = router; 
