@@ -6,10 +6,21 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs'); 
 const jsonWebToken = require('jsonwebtoken'); 
 
+const path = require('path');
+
 const requireTeamAuth = require('../middleware/requireTeamAuth');
+const uploadParticipantFiles = require('../middleware/uploadParticipantFiles'); 
 
 const { sendEmail } = require('../services/emailService');
 const { buildPasswordResetEmailTemplate } = require('../services/emailTemplates');
+const { getDropboxClient } = require('../services/dropboxClient'); 
+
+function isDocxFile(fileObject){
+    if (!fileObject) return false; 
+
+    const fileExtension = path.extname(fileObject.originalname).toLowerCase(); 
+    return fileExtension === '.docx'; 
+}
 
 /*********
  * LOGIN * 
@@ -162,8 +173,58 @@ router.post('/participants/set-password', async (req, res) => {
 
 });
 
-router.get('/participants/me', requireTeamAuth, (req,res) => {
-    return res.json({ ok: true, teamID: req.authTeamID });
-})
+/***************************
+ * UPLOAD FILES TO DROPBOX *
+ ***************************/
+router.post('/participants/upload-submission', requireTeamAuth, uploadParticipantFiles, async (req, res) => {
+    try { 
+
+        const stateFileArray = req.files?.stateMemorandum; 
+        const victimFileArray = req.files?.victimMemorandum; 
+
+        if (!stateFileArray || !victimFileArray){
+            return res.status(400).json({ ok: false });
+        }
+
+        const stateFileObject = stateFileArray[0]; 
+        const victimFileObject = victimFileArray[0];
+        
+        if (!isDocxFile(stateFileObject) || !isDocxFile(victimFileObject)){
+            return res.status(400).json({ ok: false });
+        }
+
+        const teamIDString = String(req.authTeamID).trim();
+        const submissionsFolderPath = '/Testing for Developers'; 
+        const stateDropboxPath = `${submissionsFolderPath}/${teamIDString}S.docx`; 
+        const victimDropboxPath = `${submissionsFolderPath}/${teamIDString}V.docx`; 
+
+        const dropboxClient = await getDropboxClient(); 
+        
+        await dropboxClient.filesUpload({
+            path: stateDropboxPath,
+            contents: stateFileObject.buffer, 
+            mode: { '.tag': 'overwrite' }
+        });
+
+        await dropboxClient.filesUpload({
+            path: victimDropboxPath, 
+            contents: victimFileObject.buffer, 
+            mode: { '.tag': 'overwrite' }
+        });
+
+        return res.json({ 
+            ok: true,
+            uploadedFiles: {
+                stateMemorandum: stateDropboxPath, 
+                victimMemorandum: victimDropboxPath
+            }
+        });
+
+    } catch (uploadError){
+        console.error('UPLOAD ROUTE ERROR: ' + uploadError); 
+        console.error('UPLOAD ROUTE ERROR JSON:', JSON.stringify(uploadError, null, 2));
+        return res.status(500).json({ ok: false });
+    }
+});
 
 module.exports = router; 
