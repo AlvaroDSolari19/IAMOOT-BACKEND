@@ -35,8 +35,8 @@ router.post('/participants/login', async (req, res) => {
         const teamIDString = String(teamID).trim(); 
         const passwordString = String(teamPassword); 
 
-        const writtenTeams = getCollection('writtenTeams');
-        const teamRecord = await writtenTeams.findOne({ teamID: teamIDString });
+        const teamsCollection = getCollection('teams');
+        const teamRecord = await teamsCollection.findOne({ teamID: teamIDString });
         if (!teamRecord) return res.status(400).json({ ok: false }); 
         if (!teamRecord.passwordHash) return res.status(400).json({ ok: false }); 
 
@@ -74,8 +74,8 @@ router.post('/participants/request-password', async (req, res) => {
         const teamIDString = String(teamID).trim();
         const emailNorm = String(requestEmail).trim().toLowerCase(); 
 
-        const writtenTeams = getCollection('writtenTeams'); 
-        const teamRecord = await writtenTeams.findOne({ teamID: teamIDString });
+        const teamsCollection = getCollection('teams'); 
+        const teamRecord = await teamsCollection.findOne({ teamID: teamIDString });
         if (!teamRecord) return res.json(genericSuccess); 
 
         const emailList = Array.isArray(teamRecord.participantEmails) ? teamRecord.participantEmails : []; 
@@ -86,7 +86,7 @@ router.post('/participants/request-password', async (req, res) => {
         const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex'); 
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000); 
 
-        await writtenTeams.updateOne(
+        await teamsCollection.updateOne(
             {_id: teamRecord._id }, 
             {
                 $set: {
@@ -135,8 +135,8 @@ router.post('/participants/set-password', async (req, res) => {
         const teamIDString = String(teamID).trim(); 
         const tokenString = String(resetToken).trim(); 
 
-        const writtenTeams = getCollection('writtenTeams'); 
-        const teamRecord = await writtenTeams.findOne({ teamID: teamIDString});
+        const teamsCollection = getCollection('teams'); 
+        const teamRecord = await teamsCollection.findOne({ teamID: teamIDString});
         if (!teamRecord) return res.status(400).json({ ok: false }); 
         if (!teamRecord.resetTokenHash || !teamRecord.resetTokenExpiresAt) return res.status(400).json({ ok: false });
 
@@ -153,7 +153,7 @@ router.post('/participants/set-password', async (req, res) => {
         const saltRounds = 12; 
         const passwordHash = await bcrypt.hash(newPassword, saltRounds); 
 
-        await writtenTeams.updateOne(
+        await teamsCollection.updateOne(
             { _id: teamRecord._id },
             {
                 $set: { passwordHash: passwordHash }, 
@@ -180,9 +180,9 @@ router.get('/participants/memoranda-status', requireTeamAuth, async (req, res) =
     
     try {
         const teamIDString = String(req.authTeamID).trim();
-        const writtenTeams = getCollection('writtenTeams'); 
+        const teamsCollection = getCollection('teams'); 
 
-        const teamRecord = await writtenTeams.findOne(
+        const teamRecord = await teamsCollection.findOne(
             { teamID: teamIDString }, 
             { projection: { memorandaSubmission: 1 } }
         );
@@ -254,9 +254,9 @@ router.post('/participants/upload-submission', requireTeamAuth, uploadParticipan
             mode: { '.tag': 'overwrite' }
         });
 
-        const writtenTeams = getCollection('writtenTeams'); 
+        const teamsCollection = getCollection('teams'); 
 
-        await writtenTeams.updateOne(
+        await teamsCollection.updateOne(
             { teamID: teamIDString }, 
             {
                 $set: {
