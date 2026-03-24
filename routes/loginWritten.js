@@ -28,7 +28,8 @@ router.post('/loginWritten', async (req, res) => {
         res.json({
             currentID: currentJudge.judgeID, 
             currentName: currentJudge.fullName, 
-            currentRole: currentJudge.currentRole  
+            currentRole: currentJudge.currentRole,
+            currentMemorandums: currentJudge.assignedMemorandums  
         })
 
 
