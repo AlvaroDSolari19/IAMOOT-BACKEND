@@ -22,6 +22,25 @@ function isDocxFile(fileObject){
     return fileExtension === '.docx'; 
 }
 
+//Helper function to retrieve or create link for the relevant memo file in dropbox
+async function getOrCreateSharedLink(dropboxClient, dropboxPath) {
+    const existingLinksResponse = await dropboxClient.sharingListSharedLinks({
+        path: dropboxPath,
+        direct_only: true
+    });
+
+    const existingLinks = existingLinksResponse?.result?.links || [];
+    if (existingLinks.length > 0) {
+        return existingLinks[0].url;
+    }
+
+    const newLinkResponse = await dropboxClient.sharingCreateSharedLinkWithSettings({
+        path: dropboxPath
+    });
+
+    return newLinkResponse.result.url;
+}
+
 /*********
  * LOGIN * 
  *********/
