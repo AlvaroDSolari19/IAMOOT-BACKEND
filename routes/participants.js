@@ -14,6 +14,7 @@ const uploadParticipantFiles = require('../middleware/uploadParticipantFiles');
 const { sendEmail } = require('../services/emailService');
 const { buildPasswordResetEmailTemplate } = require('../services/emailTemplates');
 const { getDropboxClient } = require('../services/dropboxClient'); 
+const { get } = require('express/lib/response');
 
 function isDocxFile(fileObject){
     if (!fileObject) return false; 
@@ -303,6 +304,42 @@ router.post('/participants/upload-submission', requireTeamAuth, uploadParticipan
         return res.status(500).json({ ok: false });
     }
 
+});
+
+
+/***************************
+ * RETRIEVE INDIVIDUAL MEMO FROM DROPBOX *
+ ***************************/
+router.get('/written-memorandums/:memorandumID/link', async (req, res) => {
+    try {
+        const rawMemorandumID = String(req.params.memorandumID || '').trim().toUpperCase();
+
+        if (!rawMemorandumID) {
+            return res.status(400).json({ ok: false, message: 'Missing memorandum ID' });
+        }
+
+        const memorandumPattern = /^\d{3}[SV]$/;
+        if (!memorandumPattern.test(rawMemorandumID)) {
+            return res.status(400).json({ ok: false, message: 'Invalid memorandum ID format' });
+        }
+
+        const dropboxPath = `/Testing for Developers/${rawMemrandumID}.docx`;
+        const dropboxClient = await getDropboxClient();
+        const sharedLink = await getOrCreateSharedLink(dropboxClient, dropboxPath);
+
+        return res.json({
+            ok: true,
+            memorandumID: rawMemorandumID,
+            dropboxPath,
+            sharedLink
+        });
+    } catch (memorandumLinkError) {
+        console.error('MEMORANDUM LINK ERROR:', memorandumLinkError);
+        return res.status(500).json({
+            ok: false,
+            message: 'Unable to get memorandum link'
+        });
+    }
 });
 
 module.exports = router; 
