@@ -9,7 +9,7 @@ router.get('/written-memoranda/:memorandumID/scores/:judgeID', async (req, res) 
     const judgeID = Number(req.params.judgeID);
 
     if (!memorandumID || Number.isNaN(judgeID)) {
-        return res.status(400).jsob({ message: 'Invalid memorandumID or judgeID' });
+        return res.status(400).json({ message: 'Invalid memorandumID or judgeID' });
     }
 
     try {
@@ -57,7 +57,7 @@ router.post('/written-memoranda/:memorandumID/scores', async (req, res) => {
         const currentMax = SCORE_LIMITS[i];
 
         if (Number.isNaN(currentScore)) {
-            return res.status(400).jsob({ message: `Score at index ${i} must be a number` });
+            return res.status(400).json({ message: `Score at index ${i} must be a number` });
         }
 
         if (currentScore < 0 || currentScore > currentMax) {
@@ -69,11 +69,16 @@ router.post('/written-memoranda/:memorandumID/scores', async (req, res) => {
 
     try {
         const memorandaCollection = getCollection('memoranda');
+
+        const memorandumDoc = await memorandaCollection.findOne({ memorandumID });
         
-        const existingSubmission = await memorandaCollection.findOne({
-            memorandumID,
-            judgeID: numericJudgeID
-        });
+        if (!memorandumDoc) {
+            return res.status(400).json({ message: 'Memorandum not found' });
+        }
+
+        const existingSubmission = (memorandumDoc.scoresByJudge || []).find(
+            (scoreEntry) => Number(scoreEntry.judgeID) === numericJudgeID
+        );
 
         if (existingSubmission) {
             return res.status(403).json({
@@ -84,16 +89,23 @@ router.post('/written-memoranda/:memorandumID/scores', async (req, res) => {
         const normalizedScores = submittedScores.map((score) => Number(score));
         const totalScore = normalizedScores.reduce((sum, currentScore) => sum + currentScore, 0);
 
-        await memorandaCollection.insertOne({
-            memorandumID,
+        const newScoreEntry = {
             judgeID: numericJudgeID,
             submittedScores: normalizedScores,
             totalScore,
             submittedAt: new Date(),
             locked: true
-        });
+        }
+        
+        await memorandaCollection.updateOne(
+            {memorandumID},
+            {
+                $push: { scoreByJudge: newScoreEntry },
+                $set: { updatedAt: new Date()}
+            }
+        );
 
-        return res.status(201).jsob({
+        return res.status(201).json({
             ok: true,
             message: 'Written scores submitted succesfully',
             memorandumID,
