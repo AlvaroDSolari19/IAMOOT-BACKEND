@@ -2,14 +2,15 @@ require('dotenv').config();
 const { MongoClient } = require('mongodb');
 
 /* MONGODB SETUP */
-const client = new MongoClient(process.env.MONGODB_URI); 
+const client = new MongoClient(process.env.MONGODB_URI_PROD); 
 let dbInstance = null; 
 
 async function connectToMongoDB(){
     try {
         await client.connect(); 
         dbInstance = client.db(process.env.MONGODB_DB_NAME); 
-        console.log('Connected to MongoDB Atlas'); 
+        console.log('Connected to MongoDB Atlas');
+        console.log('Using DB name:', process.env.MONGODB_DB_NAME);
     } catch (err){
         console.error('Failed to connect to MongoDB: ', err); 
     }

@@ -14,12 +14,32 @@ const uploadParticipantFiles = require('../middleware/uploadParticipantFiles');
 const { sendEmail } = require('../services/emailService');
 const { buildPasswordResetEmailTemplate } = require('../services/emailTemplates');
 const { getDropboxClient } = require('../services/dropboxClient'); 
+const { get } = require('express/lib/response');
 
 function isDocxFile(fileObject){
     if (!fileObject) return false; 
 
     const fileExtension = path.extname(fileObject.originalname).toLowerCase(); 
     return fileExtension === '.docx'; 
+}
+
+//Helper function to retrieve or create link for the relevant memo file in dropbox
+async function getOrCreateSharedLink(dropboxClient, dropboxPath) {
+    const existingLinksResponse = await dropboxClient.sharingListSharedLinks({
+        path: dropboxPath,
+        direct_only: true
+    });
+
+    const existingLinks = existingLinksResponse?.result?.links || [];
+    if (existingLinks.length > 0) {
+        return existingLinks[0].url;
+    }
+
+    const newLinkResponse = await dropboxClient.sharingCreateSharedLinkWithSettings({
+        path: dropboxPath
+    });
+
+    return newLinkResponse.result.url;
 }
 
 /*********
@@ -264,7 +284,9 @@ router.post('/participants/upload-submission', requireTeamAuth, uploadParticipan
                         hasSubmitted: true, 
                         submittedAt: new Date(), 
                         stateOriginalFilename: stateFileObject.originalname, 
-                        victimOriginalFilename: victimFileObject.originalname
+                        victimOriginalFilename: victimFileObject.originalname,
+                        stateDropboxPath: stateDropboxPath,
+                        victimDropboxPath: victimDropboxPath
                     }
                 }
             }
@@ -284,6 +306,48 @@ router.post('/participants/upload-submission', requireTeamAuth, uploadParticipan
         return res.status(500).json({ ok: false });
     }
 
+});
+
+
+/***************************
+ * RETRIEVE INDIVIDUAL MEMO FROM DROPBOX *
+ ***************************/
+router.get('/written-memorandums/:memorandumID/link', async (req, res) => {
+    let dropboxPath = '';
+
+
+    try {
+        const rawMemorandumID = String(req.params.memorandumID || '').trim().toUpperCase();
+
+        if (!rawMemorandumID) {
+            return res.status(400).json({ ok: false, message: 'Missing memorandum ID' });
+        }
+
+        const memorandumPattern = /^\d{3}[SV]$/;
+        if (!memorandumPattern.test(rawMemorandumID)) {
+            return res.status(400).json({ ok: false, message: 'Invalid memorandum ID format' });
+        }
+
+        dropboxPath = `/Testing for Developers/${rawMemorandumID}.docx`;
+        const dropboxClient = await getDropboxClient();
+        const sharedLink = await getOrCreateSharedLink(dropboxClient, dropboxPath);
+
+        return res.json({
+            ok: true,
+            memorandumID: rawMemorandumID,
+            dropboxPath,
+            sharedLink
+        });
+    } catch (memorandumLinkError) {
+        console.error('MEMORANDUM LINK ERROR:', memorandumLinkError);
+        return res.status(500).json({
+            ok: false,
+            message: 'Unable to get memorandum link', 
+            error: memorandumLinkError?.message ?? String(memorandumLinkError),
+            details: memorandumLinkError?.error ?? null, 
+            dropboxPath
+        });
+    }
 });
 
 module.exports = router; 
