@@ -15,10 +15,15 @@ router.get('/written-memoranda/:memorandumID/scores/:judgeID', async (req, res) 
     try {
         const judgesCollection = getCollection('memoranda');
 
-        const existingSubmission = await judgesCollection.findOne({
-            memorandumID,
-            judgeID
-        });
+        const memorandumDoc = await judgesCollection.findOne({ memorandumID});
+
+        if (!memorandumDoc) {
+            return res.status(404).json({ message: 'Memorandum not found'});
+        }
+
+        const existingSubmission = (memorandumDoc.scoresByJudge || []).find(
+            (scoreEntry) => Number(scoreEntry.judgeID) === judgeID
+        );
 
         if (!existingSubmission) {
             return res.status(200).json({
@@ -30,7 +35,7 @@ router.get('/written-memoranda/:memorandumID/scores/:judgeID', async (req, res) 
         return res.status(200).json({
             ok: true,
             hasSubmission: true,
-            memorandumID: existingSubmission.memorandumID,
+            memorandumID: memorandumDoc.memorandumID,
             judgeID: existingSubmission.judgeID,
             submittedScores: existingSubmission.submittedScores,
             totalScore: existingSubmission.totalScore,
@@ -95,15 +100,24 @@ router.post('/written-memoranda/:memorandumID/scores', async (req, res) => {
             totalScore,
             submittedAt: new Date(),
             locked: true
-        }
-        
-        await memorandaCollection.updateOne(
-            {memorandumID},
+        };
+
+        const updateResult = await memorandaCollection.updateOne(
             {
-                $push: { scoreByJudge: newScoreEntry },
+                memorandumID,
+                "scoresByJudge.judgeID": { $ne: numericJudgeID }
+            },
+            {
+                $push: { scoresByJudge: newScoreEntry },
                 $set: { updatedAt: new Date()}
             }
         );
+        
+        if (updateResult.modifiedCount === 0) {
+            return res.status(403).json({
+                message: 'Scores for this memorandum have already been submitted by this judge'
+            });
+        }
 
         return res.status(201).json({
             ok: true,
