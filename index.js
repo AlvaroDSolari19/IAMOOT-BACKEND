@@ -3,13 +3,12 @@ const express = require('express');
 const cors = require('cors');
 const { connectToMongoDB } = require('./db'); 
 
-const loginRoute = require('./routes/login');
 const adminTeamsRoute = require('./routes/adminTeams');
 const adminPrelimsRoute = require('./routes/adminPrelims'); 
 const adminSemisRoute = require('./routes/adminSemis')
 const judgeOralRoundsRoutes = require('./routes/judgeOralRounds');
-const loginWrittenRoute = require('./routes/loginWritten');
 const participantRoutes = require('./routes/participants'); 
+const writtenJudgesRoutes = require('./routes/writtenJudges');
 const writtenMemorandaScoresRoutes = require('./routes/writtenMemorandaScores');
 
 const app = express(); 
@@ -23,13 +22,12 @@ app.use(cors({ origin: '*' }));
 app.use(express.json()); 
 
 /* ROUTES */
-app.use('/api', loginRoute); 
 app.use('/api', adminTeamsRoute); 
 app.use('/api', adminPrelimsRoute); 
 app.use('/api', adminSemisRoute);
 app.use('/api', judgeOralRoundsRoutes);
-app.use('/api', loginWrittenRoute);
 app.use('/api', participantRoutes);
+app.use('/api', writtenJudgesRoutes)
 app.use('/api', writtenMemorandaScoresRoutes);
 
 app.get('/health', (req, res) => {
