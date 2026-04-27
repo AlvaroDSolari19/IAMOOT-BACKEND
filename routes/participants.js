@@ -312,42 +312,6 @@ router.post('/participants/upload-submission', requireTeamAuth, uploadParticipan
 /***************************
  * RETRIEVE INDIVIDUAL MEMO FROM DROPBOX *
  ***************************/
-router.get('/written-memorandums/:memorandumID/link', async (req, res) => {
-    let dropboxPath = '';
 
-
-    try {
-        const rawMemorandumID = String(req.params.memorandumID || '').trim().toUpperCase();
-
-        if (!rawMemorandumID) {
-            return res.status(400).json({ ok: false, message: 'Missing memorandum ID' });
-        }
-
-        const memorandumPattern = /^\d{3}[SV]$/;
-        if (!memorandumPattern.test(rawMemorandumID)) {
-            return res.status(400).json({ ok: false, message: 'Invalid memorandum ID format' });
-        }
-
-        dropboxPath = `/Testing for Developers/${rawMemorandumID}.docx`;
-        const dropboxClient = await getDropboxClient();
-        const sharedLink = await getOrCreateSharedLink(dropboxClient, dropboxPath);
-
-        return res.json({
-            ok: true,
-            memorandumID: rawMemorandumID,
-            dropboxPath,
-            sharedLink
-        });
-    } catch (memorandumLinkError) {
-        console.error('MEMORANDUM LINK ERROR:', memorandumLinkError);
-        return res.status(500).json({
-            ok: false,
-            message: 'Unable to get memorandum link', 
-            error: memorandumLinkError?.message ?? String(memorandumLinkError),
-            details: memorandumLinkError?.error ?? null, 
-            dropboxPath
-        });
-    }
-});
 
 module.exports = router; 

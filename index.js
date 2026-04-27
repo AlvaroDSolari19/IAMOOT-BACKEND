@@ -10,6 +10,8 @@ const judgeOralRoundsRoutes = require('./routes/judgeOralRounds');
 const participantRoutes = require('./routes/participants'); 
 const writtenJudgesRoutes = require('./routes/writtenJudges');
 const writtenMemorandaScoresRoutes = require('./routes/writtenMemorandaScores');
+const writtenMemorandaLinksRoutes = require('./routes/writtenMemorandaLinks');
+
 
 const app = express(); 
 const port = process.env.PORT || 3000; 
@@ -29,6 +31,7 @@ app.use('/api', judgeOralRoundsRoutes);
 app.use('/api', participantRoutes);
 app.use('/api', writtenJudgesRoutes)
 app.use('/api', writtenMemorandaScoresRoutes);
+app.use('/api', writtenMemorandaLinksRoutes);
 
 app.get('/health', (req, res) => {
     res.json({ ok: true });
