@@ -27,7 +27,7 @@ function buildPasswordResetEmailTemplate({ recipientLanguage, accountLabel, rese
                 <p>IAMOOT Support<br />iamootsupport@iamootofficial.org</p> 
             `
         },
-        ES: {
+        SPA: {
             emailSubject: 'IAMOOT Restablecimiento de Contraseña',
             emailText: [
                 'Hola,',

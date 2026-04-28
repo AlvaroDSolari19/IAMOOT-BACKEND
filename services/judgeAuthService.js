@@ -47,7 +47,7 @@ async function loginJudge (req, res, {collectionName }) {
 /*****************************
  * REQUEST SET PASSWORD LINK *
  *****************************/
-async function requestJudgePassword (req, res, {collectionName}) {
+async function requestJudgePassword (req, res, {collectionName, frontendBaseURL}) {
 
     const genericSuccess = { ok: true };
 
@@ -76,8 +76,7 @@ async function requestJudgePassword (req, res, {collectionName}) {
             }
         );
 
-        const frontendBaseURL = process.env.FRONTEND_WRITTEN_JUDGES_URL; 
-        if (!frontendBaseURL) throw new Error('Missing FRONTEND_BASE_URL environment variable'); 
+        if (!frontendBaseURL) throw new Error('Missing judge frontend base URL environment variable'); 
 
         const resetLink = `${frontendBaseURL}/set-password?email=${encodeURIComponent(emailNorm)}&token=${rawToken}`;
 

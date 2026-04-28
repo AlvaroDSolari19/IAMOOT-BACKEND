@@ -21,7 +21,7 @@ router.post('/written-judges/login', (req, res) => {
  * REQUEST SET PASSWORD LINK *
  *****************************/
 router.post('/written-judges/request-password', (req,res) => {
-    requestJudgePassword(req, res, { collectionName: 'writtenJudges' });
+    requestJudgePassword(req, res, { collectionName: 'writtenJudges', frontendBaseURL: process.env.FRONTEND_WRITTEN_JUDGES_URL });
 });
 
 /****************
@@ -100,7 +100,3 @@ router.get('/written-judges/me', requireJudgeAuth, async (req, res) => {
 });
 
 module.exports = router; 
-
-/**
- * GET 
- */
