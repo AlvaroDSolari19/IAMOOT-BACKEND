@@ -76,7 +76,7 @@ async function requestJudgePassword (req, res, {collectionName}) {
             }
         );
 
-        const frontendBaseURL = process.env.FRONTEND_BASE_URL; 
+        const frontendBaseURL = process.env.FRONTEND_WRITTEN_JUDGES_URL; 
         if (!frontendBaseURL) throw new Error('Missing FRONTEND_BASE_URL environment variable'); 
 
         const resetLink = `${frontendBaseURL}/set-password?email=${encodeURIComponent(emailNorm)}&token=${rawToken}`;

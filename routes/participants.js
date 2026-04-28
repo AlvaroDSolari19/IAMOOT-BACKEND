@@ -117,7 +117,7 @@ router.post('/participants/request-password', async (req, res) => {
             }
         );
 
-        const frontendBaseURL = process.env.FRONTEND_BASE_URL; 
+        const frontendBaseURL = process.env.FRONTEND_PARTICIPANTS_URL; 
         if(!frontendBaseURL) throw new Error('Missing FRONTEND_BASE_URL environment variable');
 
         const resetLink = `${frontendBaseURL}/set-password?teamID=${encodeURIComponent(teamIDString)}&token=${rawToken}`;
