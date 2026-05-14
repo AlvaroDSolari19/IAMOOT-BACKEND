@@ -166,12 +166,9 @@ router.get('/admin/written/team/:teamID', async (req, res) => {
         const formatMemorandumDetails = (memorandumRecord) => {
             if (!memorandumRecord) return null;
 
-            const scoreRecords = Array.isArray(memorandumRecord.scoresByJudge) ? memorandumRecord.scoresByJudge.map((scoreRecord) => {
-                return {
-                    judgeID: scoreRecord.judgeID,
-                    totalScore: scoreRecord.totalScore
-                }
-            }) : [];
+            const scoreValues = Array.isArray(memorandumRecord.scoresByJudge) ? memorandumRecord.scoresByJudge.map((scoreRecord) => {
+                return scoreRecord.totalScore; 
+            }) : []; 
 
             const averageScore = calculateAverageScore(memorandumRecord.scoresByJudge);
             const penaltyPoints = Number(memorandumRecord.penaltyPoints || 0);
@@ -180,7 +177,7 @@ router.get('/admin/written/team/:teamID', async (req, res) => {
             return {
                 memorandumID: memorandumRecord.memorandumID,
                 status: memorandumRecord.status,
-                scoreRecords,
+                scoreValues,
                 averageScore,
                 penaltyPoints,
                 adjustedScore
