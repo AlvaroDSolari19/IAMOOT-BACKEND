@@ -83,20 +83,27 @@ router.get('/admin/written/results', async (req, res) => {
             _id: 0,
             teamID: 1,
             status: 1,
-            scoresByJudge: 1
+            scoresByJudge: 1,
+            penaltyPoints: 1
         }).toArray();
 
         const results = allTeams.map((teamRecord) => {
             const stateMemorandum = allMemoranda.find((memorandumRecord) => {
                 return memorandumRecord.teamID === teamRecord.teamID && memorandumRecord.status === 'State';
-            })
+            });
 
             const victimMemorandum = allMemoranda.find((memorandumRecord) => {
                 return memorandumRecord.teamID === teamRecord.teamID && memorandumRecord.status === 'Victim';
-            })
+            });
 
-            const stateAverage = calculateAverageScore(stateMemorandum?.scoresByJudge);
-            const victimAverage = calculateAverageScore(victimMemorandum?.scoresByJudge);
+            const rawStateAverage = calculateAverageScore(stateMemorandum?.scoresByJudge); 
+            const rawVictimAverage = calculateAverageScore(victimMemorandum?.scoresByJudge); 
+
+            const statePenaltyPoints = Number(stateMemorandum?.penaltyPoints || 0); 
+            const victimPenaltyPoints = Number(victimMemorandum?.penaltyPoints || 0); 
+
+            const stateAverage = rawStateAverage !== null ? rawStateAverage - statePenaltyPoints : null;
+            const victimAverage = rawVictimAverage !== null ? rawVictimAverage - victimPenaltyPoints : null;
             const combinedAverage = stateAverage !== null && victimAverage !== null ? (stateAverage + victimAverage) / 2 : null;
 
             return {
@@ -197,6 +204,50 @@ router.get('/admin/written/team/:teamID', async (req, res) => {
     } catch (error) {
         console.error('Written team details error: ', error);
         return res.status(500).json({ ok: false, message: 'Failed to retrieve written team details.' });
+    }
+
+});
+
+/*****************
+ * APPLY PENALTY *
+ *****************/
+
+router.patch('/admin/written/team/:teamID/penalty', async (req, res) => {
+
+    try {
+
+        const teamID = String(req.params.teamID || '').trim(); 
+        const memorandumType = String(req.body.memorandumType || '').trim(); 
+        const penaltyPoints = Number(req.body.penaltyPoints); 
+
+        if (!teamID) return res.status(400).json({ ok: false, message: 'Team ID is required.' }); 
+        if (!memorandumType) return res.status(400).json({ ok: false, message: 'Memorandum type is required.' });
+        if (memorandumType !== 'State' && memorandumType !== 'Victim') return res.status(400).json({ ok: false, message: 'Memorandum type must be State or Victim.' });
+        if (Number.isNaN(penaltyPoints) || penaltyPoints <= 0) return res.status(400).json({ ok: false, message: 'Penalty points must be a number greater than 0.' });
+
+        const memorandaCollection = getCollection('memoranda'); 
+        const updateResult = await memorandaCollection.updateOne(
+            {
+                teamID,
+                status: memorandumType,
+            }, 
+            {
+                $set: {
+                    penaltyPoints
+                }
+            }
+        );
+
+        if (updateResult.matchedCount === 0) return res.status(404).json({ ok: false, message: 'Memorandum was not found.' });
+
+        return res.status(200).json({
+            ok: true, 
+            message: 'Penalty points applied successfully.'
+        });
+
+    } catch (error){
+        console.error('Written penalty update error: ', error); 
+        return res.status(500).json({ ok: false, message: 'Failed to apply penalty points.' })
     }
 
 });
