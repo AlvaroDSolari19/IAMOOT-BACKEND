@@ -1,6 +1,30 @@
 const express = require('express'); 
 const router = express.Router(); 
 const { getCollection } = require('../db'); 
+const requireJudgeAuth = require('../middleware/requireJudgeAuth');
+
+router.get('oralrounds/me/matches', requireJudgeAuth, async(req, res) =>{
+    const judgeID = Number(req.authJudgeID);
+
+    try {
+        const matchesCollection = getCollection('preliminaryMatches');
+
+        const assignedMatches = await matchesCollection.find({
+            judgesAssigned: judgeID
+        }).toArray();
+
+        const ungradedMatches = assignedMatches.filter((currentMatch) => {
+            return !currentMatch.gradedJudges || !currentMatch.gradedJudges.includes(judgeID);
+        });
+
+        return res.json(ungradedMatches);
+    } catch (error) {
+        console.error(`Error fetching authenticated judge matches: ${error}`);
+        return res.status(500).jsob({
+            message: 'Server error while retrieving matches'
+        });
+    } 
+});
 
 router.get('/oralrounds/judge/:judgeID', async (req, res) => {
 
@@ -26,9 +50,9 @@ router.get('/oralrounds/judge/:judgeID', async (req, res) => {
 
 });
 
-router.get('/oralrounds/match/:matchID', async (req, res) => { 
+router.get('/oralrounds/match/:matchID', requireJudgeAuth,async (req, res) => { 
     const matchID = req.params.matchID; 
-    const judgeID = Number(req.headers['judgeid']);
+    const judgeID = Number(req.authJudgeID);
 
     try { 
         const matchesCollection = getCollection('preliminaryMatches'); 
@@ -66,8 +90,9 @@ router.get('/oralrounds/match/:matchID', async (req, res) => {
 
 });
 
-router.post('/oralrounds/submitscores', async (req, res) => { 
-    const { judgeID, matchID, finalScores } = req.body; 
+router.post('/oralrounds/submitscores', requireJudgeAuth,async (req, res) => { 
+    const judgeID = Number(req.authJudgeID);
+    const { matchID, finalScores } = req.body; 
 
     if (!judgeID || !matchID || !Array.isArray(finalScores)){ 
         return res.status(400).json({ message: 'Missing required fields' });
