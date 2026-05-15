@@ -3,7 +3,7 @@ const router = express.Router();
 const { getCollection } = require('../db'); 
 const requireJudgeAuth = require('../middleware/requireJudgeAuth');
 
-router.get('oralrounds/me/matches', requireJudgeAuth, async(req, res) =>{
+router.get('/oralrounds/me/matches', requireJudgeAuth, async(req, res) =>{
     const judgeID = Number(req.authJudgeID);
 
     try {
