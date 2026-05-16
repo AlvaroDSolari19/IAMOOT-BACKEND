@@ -8,6 +8,7 @@ const adminPrelimsRoute = require('./routes/adminPrelims');
 const adminSemisRoute = require('./routes/adminSemis')
 
 const adminAuthRoutes = require('./routes/adminAuthRoutes'); 
+const adminOralRoutes = require('./routes/adminOralRoutes');
 const adminWrittenRoutes = require('./routes/adminWrittenRoutes');
 
 const judgeOralRoundsRoutes = require('./routes/judgeOralRounds');
@@ -33,6 +34,7 @@ app.use('/api', adminPrelimsRoute);
 app.use('/api', adminSemisRoute);
 
 app.use('/api', adminAuthRoutes);
+app.use('/api', adminOralRoutes); 
 app.use('/api', adminWrittenRoutes);
 app.use('/api', judgeOralRoundsRoutes);
 app.use('/api', participantRoutes);
