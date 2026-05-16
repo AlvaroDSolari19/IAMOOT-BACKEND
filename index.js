@@ -6,6 +6,10 @@ const { connectToMongoDB } = require('./db');
 const adminTeamsRoute = require('./routes/adminTeams');
 const adminPrelimsRoute = require('./routes/adminPrelims'); 
 const adminSemisRoute = require('./routes/adminSemis')
+
+const adminAuthRoutes = require('./routes/adminAuthRoutes'); 
+const adminWrittenRoutes = require('./routes/adminWrittenRoutes');
+
 const judgeOralRoundsRoutes = require('./routes/judgeOralRounds');
 const participantRoutes = require('./routes/participants'); 
 const writtenJudgesRoutes = require('./routes/writtenJudges');
@@ -27,6 +31,9 @@ app.use(express.json());
 app.use('/api', adminTeamsRoute); 
 app.use('/api', adminPrelimsRoute); 
 app.use('/api', adminSemisRoute);
+
+app.use('/api', adminAuthRoutes);
+app.use('/api', adminWrittenRoutes);
 app.use('/api', judgeOralRoundsRoutes);
 app.use('/api', participantRoutes);
 app.use('/api', writtenJudgesRoutes)
