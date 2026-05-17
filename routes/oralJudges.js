@@ -25,7 +25,7 @@ router.post('/oral-judges/login', (req, res) => {
 router.post('/oral-judges/request-password', (req, res) => {
     return requestJudgePassword(req, res, {
         collectionName: 'preliminaryJudges',
-        frontendBaseURL: process.env.FRONTEND_BASE_URL
+        frontendBaseURL: process.env.FRONTEND_ORAL_JUDGES_BASE_URL
     });
 });
 
