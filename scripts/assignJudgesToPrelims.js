@@ -1,189 +1,341 @@
-require('dotenv').config(); 
 const { MongoClient } = require('mongodb'); 
+require('dotenv').config(); 
 
-const client = new MongoClient(process.env.MONGODB_URI_PROD); 
+const roomJudgeLimits = {
+    NT01: 9, 
+    NT07: 9, 
+    NT08: 9, 
+    YT17: 9, 
+    Y400: 9, 
+    Y401: 9, 
+    CT16: 5, 
+    CT17: 5, 
+    C117: 5, 
+};
 
-function getJudgeCountForMatch(someLanguage){
-    if (someLanguage === 'English') return 7; 
-    if (someLanguage === 'Portuguese') return (Math.random() < 0.5 ? 3 : 5); 
-    if (someLanguage === 'Spanish') return 9;//(Math.random() < 0.5 ? 7 : 9);
+function groupJudgesByLanguage(preliminaryJudges){
+    
+    const judgesByLanguage = {
+        EN: [], 
+        SPA: [], 
+        POR: []
+    }; 
+
+    for (const currentJudge of preliminaryJudges){
+        const judgeLanguage = currentJudge.currentLanguage; 
+
+        if(!judgesByLanguage[judgeLanguage]){
+            judgesByLanguage[judgeLanguage] = []; 
+        }
+
+        judgesByLanguage[judgeLanguage].push(currentJudge);
+    }
+
+    return judgesByLanguage;
+
 }
 
-async function main() { 
-    try {
+function createJudgeAssignmentTrackers(preliminaryJudges){
 
-        await client.connect(); 
-        const db = client.db('ProdCluster');
+    const judgeAssignmentTrackers = {}; 
 
-        const matchesCollection = db.collection('preliminaryMatches'); 
-        const judgesCollection = db.collection('preliminaryJudges');
+    for (const currentJudge of preliminaryJudges){
+        judgeAssignmentTrackers[currentJudge.judgeID] = {
+            judgeID: currentJudge.judgeID, 
+            judgeName: currentJudge.fullName, 
+            judgeLanguage: currentJudge.currentLanguage, 
+            assignmentCount: 0, 
+            assignedTimeSlots: []
+        }
+    }
 
-        const allMatches = await matchesCollection.find().toArray(); 
-        console.log(`Loaded ${allMatches.length} matches.`);
+    return judgeAssignmentTrackers; 
 
-        const allJudges = await judgesCollection.find().toArray();
-        console.log(`Loaded ${allJudges.length} judges.`);
-        console.log(); 
+}
 
-        /****************************
-         * GROUP JUDGES BY LANGUAGE *
-         ****************************/
-        const judgePools = {
-            English: [],
-            Spanish: [],
-            Portuguese: []
+function createMatchTimeSlotIdentifier(currentMatch){
+    return `${currentMatch.matchDate}|${currentMatch.matchTime}`; 
+}
+
+function getRequiredJudgeCount(currentMatch){
+    
+    const requiredJudgeCount = roomJudgeLimits[currentMatch.roomNumber];
+    
+    if (!requiredJudgeCount){
+        throw new Error(`No judge count configured for room ${currentMatch.roomNumber}`);
+    }
+
+    return requiredJudgeCount; 
+}
+
+function getJudgeLanguageRequirements(currentMatch, requiredJudgeCount){
+    
+    if (currentMatch.needsTranslation !== true){
+        return {
+            [currentMatch.stateTeamLanguage]: requiredJudgeCount
         };
+    }
 
-        for (const currentJudge of allJudges) {
-            const currentID = currentJudge.judgeID;
+    const matchLanguages = [...currentMatch.matchLanguages].sort(); 
+    const firstLanguage = matchLanguages[0];
+    const secondLanguage = matchLanguages[1]; 
 
-            if (currentID >= 1000 && currentID < 2000){
-                judgePools.English.push(currentJudge); 
-            } else if (currentID >= 2000 && currentID < 3000){
-                judgePools.Spanish.push(currentJudge);
-            } else if (currentID >= 3000 && currentID < 4000){
-                judgePools.Portuguese.push(currentJudge); 
+    const baseLanguageCount = Math.floor(requiredJudgeCount / 2);
+    const extraLanguage = Math.random() < 0.5 ? firstLanguage : secondLanguage; 
+
+    return {
+        [firstLanguage]: baseLanguageCount + (extraLanguage === firstLanguage ? 1 : 0), 
+        [secondLanguage]: baseLanguageCount + (extraLanguage === secondLanguage ? 1 : 0)
+    };
+
+}
+
+function getEligibleJudgesForLanguage(judgesByLanguage, judgeAssignmentTrackers, judgeLanguage, currentMatch){
+    const matchTimeSlotIdentifier = createMatchTimeSlotIdentifier(currentMatch); 
+
+    return judgesByLanguage[judgeLanguage].filter(currentJudge => {
+        const currentTracker = judgeAssignmentTrackers[currentJudge.judgeID];
+        return !currentTracker.assignedTimeSlots.includes(matchTimeSlotIdentifier); 
+    });
+}
+
+function sortJudgesByAssignmentCount(eligibleJudges, judgeAssignmentTrackers){
+    return [...eligibleJudges].sort((firstJudge, secondJudge) => {
+        const firstJudgeTracker = judgeAssignmentTrackers[firstJudge.judgeID]; 
+        const secondJudgeTracker = judgeAssignmentTrackers[secondJudge.judgeID]; 
+        return firstJudgeTracker.assignmentCount - secondJudgeTracker.assignmentCount; 
+    });
+}
+
+function shuffleArray(originalArray){
+    const shuffledArray = [...originalArray]; 
+
+    for (let currentIndex = shuffledArray.length - 1; currentIndex > 0; currentIndex--){
+        const randomIndex = Math.floor(Math.random() * (currentIndex + 1));
+        const temporaryValue = shuffledArray[currentIndex];
+
+        shuffledArray[currentIndex] = shuffledArray[randomIndex]; 
+        shuffledArray[randomIndex] = temporaryValue; 
+    }
+
+    return shuffledArray;
+}
+
+function selectJudgesForLanguage(judgesByLanguage, judgeAssignmentTrackers, judgeLanguage, requiredJudgeCount, currentMatch){
+
+    const eligibleJudges = getEligibleJudgesForLanguage(judgesByLanguage, judgeAssignmentTrackers, judgeLanguage, currentMatch);
+    const shuffledEligibleJudges = shuffleArray(eligibleJudges); 
+    const sortedJudges = sortJudgesByAssignmentCount(shuffledEligibleJudges, judgeAssignmentTrackers); 
+    
+    if(sortedJudges.length < requiredJudgeCount){
+        throw new Error(`Not enough eligible ${judgeLanguage} judges for match ${currentMatch.matchID}.`);
+    }
+
+    return sortedJudges.slice(0, requiredJudgeCount);  
+
+}
+
+function assignJudgesToMatch(currentMatch, selectedJudges, judgeAssignmentTrackers){
+
+    const matchTimeSlotIdentifier = createMatchTimeSlotIdentifier(currentMatch); 
+
+    currentMatch.assignedJudges = selectedJudges.map(currentJudge => {
+        return {
+            judgeID: currentJudge.judgeID, 
+            judgeName: currentJudge.fullName
+        }
+    });
+
+    for (const currentJudge of selectedJudges){
+        const currentTracker = judgeAssignmentTrackers[currentJudge.judgeID]; 
+        currentTracker.assignmentCount = currentTracker.assignmentCount + 1; 
+        currentTracker.assignedTimeSlots.push(matchTimeSlotIdentifier); 
+    }
+
+}
+
+function assignJudgesToAllMatches(preliminaryMatches, judgesByLanguage, judgeAssignmentTrackers){
+
+    const scheduledMatches = shuffleArray(preliminaryMatches); 
+
+    for (const currentMatch of scheduledMatches){
+        const requiredJudgeCount = getRequiredJudgeCount(currentMatch); 
+        const languageRequirements = getJudgeLanguageRequirements(currentMatch, requiredJudgeCount); 
+
+        const selectedJudges = []; 
+
+        for (const judgeLanguage in languageRequirements){
+            const requiredLanguageCount = languageRequirements[judgeLanguage]; 
+            const selectedLanguageJudges = selectJudgesForLanguage(judgesByLanguage, judgeAssignmentTrackers, judgeLanguage, requiredLanguageCount, currentMatch);
+            selectedJudges.push(...selectedLanguageJudges);
+        }
+
+        assignJudgesToMatch(currentMatch, selectedJudges, judgeAssignmentTrackers); 
+    }
+
+    return scheduledMatches; 
+
+}
+
+function validateJudgeAssignments(assignedMatches, judgeAssignmentTrackers){
+
+    const judgeTimeSlotMap = {}; 
+
+    for (const currentMatch of assignedMatches){
+        
+        const requiredJudgeCount = getRequiredJudgeCount(currentMatch); 
+        const assignedJudgeCount = currentMatch.assignedJudges?.length || 0; 
+
+        if (assignedJudgeCount !== requiredJudgeCount){
+            throw new Error(`Match ${currentMatch.matchID} expected ${requiredJudgeCount} judges, but found ${assignedJudgeCount}.`);
+        }
+
+        if (assignedJudgeCount % 2 === 0){
+            throw new Error(`Match ${currentMatch.matchID} has an even number of judges.`); 
+        }
+
+        const matchTimeSlotIdentifier = createMatchTimeSlotIdentifier(currentMatch); 
+
+        for (const currentJudge of currentMatch.assignedJudges){
+
+            if (!currentJudge.judgeID || !currentJudge.judgeName){
+                throw new Error(`Match ${currentMatch.matchID} has an assigned judge missing judgeID or judgeName.`);
+            }
+
+            const currentTracker = judgeAssignmentTrackers[currentJudge.judgeID];
+
+            if (!currentTracker){
+                throw new Error(`Judge ${currentJudge.judgeID} was assigned but does not exist in judge trackers.`);
+            }
+
+            if (!judgeTimeSlotMap[currentJudge.judgeID]){
+                judgeTimeSlotMap[currentJudge.judgeID] = [];
+            }
+
+            if (judgeTimeSlotMap[currentJudge.judgeID].includes(matchTimeSlotIdentifier)){
+                throw new Error(`Judge ${currentJudge.judgeID} is assigned twice at ${matchTimeSlotIdentifier}.`);
+            }
+
+            judgeTimeSlotMap[currentJudge.judgeID].push(matchTimeSlotIdentifier);
+
+            if (currentMatch.needsTranslation !== true){
+                if (currentTracker.judgeLanguage !== currentMatch.stateTeamLanguage){
+                    throw new Error(`Judge ${currentJudge.judgeID} has language ${currentTracker.judgeLanguage}, but match ${currentMatch.matchID} requires ${currentMatch.stateTeamLanguage}.`);
+                }
             }
 
         }
 
-        console.log(`Judge Pools:\n - English: ${judgePools.English.length}\n - Spanish: ${judgePools.Spanish.length}\n - Portuguese: ${judgePools.Portuguese.length}`);
-        console.log(); 
-
-        /*******************************
-         * TRACK THE MATCHES PER JUDGE *
-         *******************************/
-        const judgeAssignments = {};
-
-        for (const currentLanguage in judgePools){
-            for (const currentJudge of judgePools[currentLanguage]){
-                judgeAssignments[currentJudge.judgeID] = 0; 
-            }
-        }
-
-        console.log(`Tracking assignments for ${Object.keys(judgeAssignments).length} judges.`);
-        console.log(); 
-
-        /**********************************************
-         * LOOP THROUGH THE MATCHES AND ASSIGN JUDGES *
-         **********************************************/
-        for (const currentMatch of allMatches){
-            const matchID = currentMatch.matchID; 
-            const matchNumber = parseInt(matchID, 10); 
-
-            let matchLanguage = ''; 
-            if (matchNumber >= 1 && matchNumber <= 6){
-                matchLanguage = 'English';
-            } else if (matchNumber >= 7 && matchNumber <= 39){
-                matchLanguage = 'Spanish'; 
-            } else if (matchNumber >= 40 && matchNumber <= 49){
-                matchLanguage = 'Portuguese'; 
-            } else {
-                console.warn(`Invalid matchID: ${matchID}, skipping...`)
-                continue; 
-            }
-
-            /* Decide the number of judges for currentMatch */
-            const requiredCount = getJudgeCountForMatch(matchLanguage); 
-            const judgePool = judgePools[matchLanguage];
-
-            /* Shuffle the judge pool */
-            const shuffledJudges = [...judgePool].sort(() => Math.random() - 0.5); 
-
-            /* Sort the shuffled list by fewest assignments */
-            const sortedJudges = shuffledJudges.sort((judgeA, judgeB) => {
-                return judgeAssignments[judgeA.judgeID] - judgeAssignments[judgeB.judgeID]; 
+        if (currentMatch.needsTranslation === true){
+            const requiredLanguages = currentMatch.matchLanguages; 
+            const assignedLanguages = currentMatch.assignedJudges.map(currentJudge => {
+                return judgeAssignmentTrackers[currentJudge.judgeID].judgeLanguage;
             });
 
-            /* Select the required number of judges from the sortedJudges */
-            const topCandidates = sortedJudges.slice(0, requiredCount);
-            const selectedJudgesIDs = topCandidates.map(judgeObject => {
-                return judgeObject.judgeID;
-            })
-
-            /* Add the judgeIDs to the currentMatch */
-            currentMatch.judgesAssigned = selectedJudgesIDs; 
-
-            /* Update the assignment count for each of the judgesAssigned */
-            for (const judgeID of selectedJudgesIDs){
-                judgeAssignments[judgeID]++; 
-            }
-
-        }
-
-        /**************
-         * VALIDATION *
-         **************/
-        let allJudgesValid = true; 
-        let allMatchesValid = true; 
-
-        /* Validate that every judge has at least 2 assignments */
-        console.log('Judges with fewer than 2 assignments: ');
-        for (const [judgeID, assignmentCount] of Object.entries(judgeAssignments)){
-            if (assignmentCount < 2){
-                console.warn(`Judge ${judgeID} only assigned to ${assignmentCount} match(es)`);
-                allJudgesValid = false; 
+            for (const requiredLanguage of requiredLanguages){
+                if (!assignedLanguages.includes(requiredLanguage)){
+                    throw new Error(`Translation match ${currentMatch.matchID} is missing a ${requiredLanguage} judge.`); 
+                }
             }
         }
-        console.log();
+    }
 
-        /* Validate that every match has an odd number of judges */
-        console.log('Matches with non-odd number of judges: ');
-        for (const currentMatch of allMatches){
-            const assignmentCount = currentMatch.judgesAssigned?.length || 0; 
+    console.log('Judge assignment validation passed.'); 
 
-            if (assignmentCount % 2 === 0 || assignmentCount < 3 || assignmentCount > 9){
-                console.warn(`Match ${currentMatch.matchID} has invalid judge count: ${assignmentCount}`);
-                allMatchesValid = false; 
-            }
+}
+
+function printJudgeAssignmentDistribution(judgeAssignmentTrackers){
+
+    const finalDistribution = {}; 
+
+    for (const currentTracker of Object.values(judgeAssignmentTrackers)){
+        const assignmentCount = currentTracker.assignmentCount; 
+
+        if (!finalDistribution[assignmentCount]){
+            finalDistribution[assignmentCount] = 0; 
         }
+
+        finalDistribution[assignmentCount] = finalDistribution[assignmentCount] + 1; 
+    }
+
+    console.log('Judge assignment distribution:');
+    console.table(finalDistribution);  
+
+}
+
+async function main(){
+    
+    const mongoClient = new MongoClient(process.env.MONGODB_URI_PROD); 
+
+    try {
+        
+        await mongoClient.connect(); 
+
+        const competitionDatabase = mongoClient.db('IAMOOT-2026'); 
+        const matchesCollection = competitionDatabase.collection('preliminaryMatches');
+        const judgesCollection = competitionDatabase.collection('preliminaryJudges'); 
+
+        const preliminaryMatches = await matchesCollection.find().toArray(); 
+        const preliminaryJudges = await judgesCollection.find().toArray(); 
+
+        if (preliminaryMatches.length === 0){
+            console.error('No preliminary matches found.'); 
+            return; 
+        }
+
+        if (preliminaryJudges.length === 0){
+            console.error('No preliminary judges found.'); 
+            return; 
+        }
+
+        console.log(`Preliminary matches found: ${preliminaryMatches.length}`);
+        console.log(`Preliminary judges found: ${preliminaryJudges.length}`); 
         console.log(); 
 
-        /* Final validation summary */
-        if (allJudgesValid && allMatchesValid){
-            console.log('All judges have at least 2 assignments and all matches have valid judge counts.');
-            console.log(); 
-        } else {
-            console.log('Validation issues found. Please review the warnings above.'); 
-            console.log(); 
-        }
+        const judgesByLanguage = groupJudgesByLanguage(preliminaryJudges); 
 
-        /***********************
-         * WRITING TO DATABASE *
-         ***********************/
-        let successfulWrites = 0; 
-        let failedWrites = 0; 
+        console.log(`EN judges: ${judgesByLanguage.EN.length}`);
+        console.log(`SPA judges: ${judgesByLanguage.SPA.length}`);
+        console.log(`POR judges: ${judgesByLanguage.POR.length}`); 
+        console.log(); 
 
-        for (const currentMatch of allMatches){
-            const matchID = currentMatch.matchID; 
-            const judgeIDs = currentMatch.judgesAssigned; 
+        const judgeAssignmentTrackers = createJudgeAssignmentTrackers(preliminaryJudges); 
+        
+        console.log(`Judge assignment trackers created: ${Object.keys(judgeAssignmentTrackers).length}`);
+        console.log();
 
-            try {
-                const matchUpdateResult = await matchesCollection.updateOne(
-                    { matchID: matchID },
-                    { $set: { judgesAssigned : judgeIDs } }
-                );
+        const assignedMatches = assignJudgesToAllMatches(preliminaryMatches, judgesByLanguage, judgeAssignmentTrackers); 
 
-                if (matchUpdateResult.modifiedCount === 1){
-                    successfulWrites++;
-                } else {
-                    console.warn(`No document modified for match ${matchID}`);
+        console.log(`Assigned judges to ${assignedMatches.length} preliminary matches.`);
+        console.table(assignedMatches.map(currentMatch => ({
+            matchID: currentMatch.matchID, 
+            date: currentMatch.matchDate, 
+            time: currentMatch.matchTime, 
+            room: currentMatch.roomNumber, 
+            translation: currentMatch.needsTranslation, 
+            judgeCount: currentMatch.assignedJudges.length
+        })));
+
+        validateJudgeAssignments(assignedMatches, judgeAssignmentTrackers); 
+        printJudgeAssignmentDistribution(judgeAssignmentTrackers); 
+
+        for (const currentMatch of assignedMatches){
+            await matchesCollection.updateOne(
+                { matchID: currentMatch.matchID },
+                { 
+                    $set: {
+                        assignedJudges: currentMatch.assignedJudges
+                    }
                 }
-
-            } catch (err){
-                console.error(`Error updating match ${matchID}: `, err.message);
-                failedWrites++;
-            }
+            )
         }
 
-        console.log(`\n Judge assignemnt update complete: `);
-        console.log(` - Successful updates: ${successfulWrites}`);
-        console.log(` - Failed updates: ${failedWrites}`);
+        console.log(`${assignedMatches.length} preliminary matches updated with assigned judges.`); 
 
-        await client.close(); 
-
-    } catch (err) {
-        console.error('Error: ', err); 
+    } catch (error){
+        console.error('Error assigning judges to preliminary matches: ', error); 
+    } finally { 
+        await mongoClient.close(); 
     }
 }
 
