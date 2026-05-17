@@ -16,6 +16,7 @@ const participantRoutes = require('./routes/participants');
 const writtenJudgesRoutes = require('./routes/writtenJudges');
 const writtenMemorandaScoresRoutes = require('./routes/writtenMemorandaScores');
 const writtenMemorandaLinksRoutes = require('./routes/writtenMemorandaLinks');
+const oralJudgesRoutes = require('./routes/oralJudges');
 
 
 const app = express(); 
@@ -41,6 +42,7 @@ app.use('/api', participantRoutes);
 app.use('/api', writtenJudgesRoutes)
 app.use('/api', writtenMemorandaScoresRoutes);
 app.use('/api', writtenMemorandaLinksRoutes);
+app.use('/api', oralJudgesRoutes);
 
 app.get('/health', (req, res) => {
     res.json({ ok: true });

@@ -1,6 +1,42 @@
 const express = require('express'); 
 const router = express.Router(); 
 const { getCollection } = require('../db'); 
+const requireJudgeAuth = require('../middleware/requireJudgeAuth');
+
+router.get('/oralrounds/me/matches', requireJudgeAuth, async(req, res) =>{
+    const judgeID = Number(req.authJudgeID);
+
+    try {
+        const matchesCollection = getCollection('preliminaryMatches');
+
+        const assignedMatches = await matchesCollection.find({
+            assignedJudges: judgeID
+        }).toArray();
+
+        const ungradedMatches = assignedMatches.filter((currentMatch) => {
+            return !currentMatch.gradedJudges || !currentMatch.gradedJudges.includes(judgeID);
+        });
+
+        const normalizedMatches = ungradedMatches.map((currentMatch) => ({
+            matchID: currentMatch.matchID,
+            firstTeam: currentMatch.victimTeam,
+            firstTeamRole: 'Victim',
+            secondTeam: currentMatch.stateTeam,
+            secondTeamRole: 'State',
+            roomNumber: currentMatch.roomNumber,
+            matchTime: currentMatch.matchTime,
+            needsTranslation: currentMatch.needsTranslation,
+            matchLanguages: currentMatch.matchLanguages
+        }));
+
+        return res.json(normalizedMatches);
+    } catch (error) {
+        console.error(`Error fetching authenticated judge matches: ${error}`);
+        return res.status(500).jsob({
+            message: 'Server error while retrieving matches'
+        });
+    } 
+});
 
 router.get('/oralrounds/judge/:judgeID', async (req, res) => {
 
@@ -10,7 +46,7 @@ router.get('/oralrounds/judge/:judgeID', async (req, res) => {
         const matchesCollection = getCollection('preliminaryMatches'); 
 
         const assignedMatches = await matchesCollection.find({
-            judgesAssigned: judgeID,
+            assignedJudges: judgeID,
         }).toArray();
 
         const ungradedMatches = assignedMatches.filter(currentMatch => {
@@ -26,9 +62,9 @@ router.get('/oralrounds/judge/:judgeID', async (req, res) => {
 
 });
 
-router.get('/oralrounds/match/:matchID', async (req, res) => { 
+router.get('/oralrounds/match/:matchID', requireJudgeAuth,async (req, res) => { 
     const matchID = req.params.matchID; 
-    const judgeID = Number(req.headers['judgeid']);
+    const judgeID = Number(req.authJudgeID);
 
     try { 
         const matchesCollection = getCollection('preliminaryMatches'); 
@@ -40,7 +76,7 @@ router.get('/oralrounds/match/:matchID', async (req, res) => {
             return res.status(404).json({ message: 'Match not found' });
         }
 
-        if (!currentMatch.judgesAssigned?.includes(judgeID)){
+        if (!currentMatch.assignedJudges?.includes(judgeID)){
             return res.status(403).json({ message: 'Access denied. You are not assigned to this match.'});
         }
         
@@ -48,7 +84,8 @@ router.get('/oralrounds/match/:matchID', async (req, res) => {
             return res.status(403).json({ message: 'You have already graded this match.'})
         }
 
-        const { firstTeam, secondTeam } = currentMatch;
+        const firstTeam = currentMatch.victimTeam;
+        const secondTeam = currentMatch.stateTeam;
 
         const allSpeakers = await speakerCollection.find({ speakerID: { $in: [`${firstTeam}A`, `${firstTeam}B`, `${secondTeam}A`, `${secondTeam}B`]}}).toArray(); 
         const speakerInfo = allSpeakers.map(currentSpeaker => ({
@@ -57,7 +94,7 @@ router.get('/oralrounds/match/:matchID', async (req, res) => {
         }));
 
         /* This is saying get the value of matchID in currentMatch and put it in databaseMatchID */ 
-        res.json({ matchID, firstTeam, secondTeam, allSpeakers: speakerInfo})
+        res.json({ matchID, firstTeam, firstTeamRole: 'Victim', secondTeam, secondTeamRole: 'State', roomNumber: currentMatch.roomNumber, matchTime: currentMatch.matchTime, allSpeakers: speakerInfo });
 
     } catch (error){
         console.error(`Error retrieving match ${matchID}: ${error}`);
@@ -66,10 +103,11 @@ router.get('/oralrounds/match/:matchID', async (req, res) => {
 
 });
 
-router.post('/oralrounds/submitscores', async (req, res) => { 
-    const { judgeID, matchID, finalScores } = req.body; 
+router.post('/oralrounds/submitscores', requireJudgeAuth,async (req, res) => { 
+    const judgeID = Number(req.authJudgeID);
+    const { matchID, finalScores } = req.body; 
 
-    if (!judgeID || !matchID || !Array.isArray(finalScores)){ 
+    if (!Number.isFinite(judgeID) || !matchID || !Array.isArray(finalScores)){ 
         return res.status(400).json({ message: 'Missing required fields' });
     }
 
@@ -85,20 +123,28 @@ router.post('/oralrounds/submitscores', async (req, res) => {
         for (const { speakerID, finalScore } of finalScores){
             await speakersCollection.updateOne(
                 { speakerID }, 
-                { $push: { receivedScores: finalScore}}
-            )
-        }
+                { $push: { 
+                    receivedScores: {
+                        judgeID,
+                        score: finalScore
+                    }
+                }
+            }
+        );
+    }
 
-        await matchesCollection.updateOne(
-            { matchID },
-            { $addToSet: {gradedJudges: judgeID}} 
-        )
+    await matchesCollection.updateOne(
+        { matchID },
+        { $addToSet: {gradedJudges: judgeID}} 
+    )
 
-        res.status(200).json({ message: 'Scores submitted successfully' });
+    res.status(200).json({ message: 'Scores submitted successfully' });
 
     } catch (error){ 
         console.error('Error submitting scores: ', error); 
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ 
+            message: 'Server error' 
+        });
     }
 });
 
