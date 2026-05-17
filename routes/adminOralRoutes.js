@@ -24,11 +24,13 @@ router.get('/admin/oral/preliminary-matches', async (req, res) => {
             matchTime: 1, 
             roomNumber: 1, 
             winningTeam: 1
-        }).sort({
-            matchDate: 1, 
-            matchTime: 1, 
-            matchID: 1
         }).toArray();
+
+        preliminaryMatches.sort((firstMatch, secondMatch) => {
+            const firstMatchDateTime = new Date(`${firstMatch.matchDate} ${firstMatch.matchTime}`);
+            const secondMatchDateTime = new Date(`${secondMatch.matchDate} ${secondMatch.matchTime}`);
+            return firstMatchDateTime - secondMatchDateTime; 
+        })
 
         return res.status(200).json({
             ok: true, 
