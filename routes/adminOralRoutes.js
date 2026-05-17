@@ -90,4 +90,55 @@ router.get('/admin/oral/preliminary-match/:matchID', async (req, res) => {
 
 });
 
+/***********************
+ * UPDATE WINNING TEAM *
+ ***********************/
+router.patch('/admin/oral/preliminary-match/:matchID/winner', async (req, res) => {
+
+    try {
+        const matchID = String(req.params.matchID || '').trim(); 
+        const winningTeam = String(req.body.winningTeam || '').trim(); 
+
+        if (!matchID) return res.status(400).json({ ok: false, message: 'Match ID is required.' });
+        if (!winningTeam) return res.status(400).json({ ok: false, message: 'Winning team is required.' });
+
+        const preliminaryMatchesCollection = getCollection('preliminaryMatches');
+
+        const matchRecord = await preliminaryMatchesCollection.findOne(
+            { matchID }, 
+            {
+                projection: {
+                    _id: 0, 
+                    stateTeam: 1, 
+                    victimTeam: 1
+                }
+            }
+        );
+
+        if (!matchRecord) return res.status(404).json({ ok: false, message: 'Preliminary match was not found.' });
+
+        const validWinningTeams = [matchRecord.stateTeam, matchRecord.victimTeam]; 
+        if (!validWinningTeams.includes(winningTeam)) return res.status(400).json({ ok: false, message: 'Winning team must belong to this match.' });
+        
+        await preliminaryMatchesCollection.updateOne(
+            { matchID },
+            {
+                $set: {
+                    winningTeam
+                }
+            }
+        );
+
+        return res.status(200).json({
+            ok: true, 
+            message: 'Winning team updated successfully.'
+        });
+
+    } catch (error){
+        console.error('Preliminary match winner update error: ', error); 
+        return res.status(500).json({ ok: false, message: 'Failed to update winning team.' });
+    }
+
+});
+
 module.exports = router; 
