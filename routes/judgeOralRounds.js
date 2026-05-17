@@ -3,6 +3,30 @@ const router = express.Router();
 const { getCollection } = require('../db'); 
 const requireJudgeAuth = require('../middleware/requireJudgeAuth');
 
+function isJudgeAssignedToMatch(match, judgeID) {
+    const assignedJudges = match.assignedJudges || [];
+
+    return assignedJudges.some((assignedJudge) => {
+        if (typeof assignedJudge === 'number') {
+            return assignedJudge === judgeID;
+        }
+
+        return Number(assignedJudge.judgeID) === judgeID;
+    });
+}
+
+function hasJudgeAlreadyGraded(match, judgeID) {
+    const gradedJudges = match.gradedJudges || [];
+
+    return gradedJudges.some((gradedJudge) => { 
+        if (typeof gradedJudge === 'number') {
+            return gradedJudge === judgeID;
+        }
+
+        return Number(gradedJudge.judgeID) === judgeID;
+    });
+}
+
 router.get('/oralrounds/me/matches', requireJudgeAuth, async(req, res) =>{
     const judgeID = Number(req.authJudgeID);
 
@@ -10,11 +34,14 @@ router.get('/oralrounds/me/matches', requireJudgeAuth, async(req, res) =>{
         const matchesCollection = getCollection('preliminaryMatches');
 
         const assignedMatches = await matchesCollection.find({
-            assignedJudges: judgeID
+            $or: [
+                {assignedJudges: judgeID},
+                {'assignedJudges.judgeID': judgeID}
+            ]
         }).toArray();
 
         const ungradedMatches = assignedMatches.filter((currentMatch) => {
-            return !currentMatch.gradedJudges || !currentMatch.gradedJudges.includes(judgeID);
+            return !hasJudgeAlreadyGraded(currentMatch, judgeID);
         });
 
         const normalizedMatches = ungradedMatches.map((currentMatch) => ({
@@ -71,17 +98,21 @@ router.get('/oralrounds/match/:matchID', requireJudgeAuth,async (req, res) => {
         const speakerCollection = getCollection('speakers'); 
 
         const currentMatch = await matchesCollection.findOne({ matchID: matchID });
-        
+        ``
         if (!currentMatch){
             return res.status(404).json({ message: 'Match not found' });
         }
 
-        if (!currentMatch.assignedJudges?.includes(judgeID)){
-            return res.status(403).json({ message: 'Access denied. You are not assigned to this match.'});
+        if (!isJudgeAssignedToMatch(currentMatch, judgeID)){
+            return res.status(403).json({
+                message: 'Access denied. You are not assigned to this match.'
+            });
         }
-        
-        if (currentMatch.gradedJudges?.includes(judgeID)){
-            return res.status(403).json({ message: 'You have already graded this match.'})
+
+        if (hasJudgeAlreadyGraded(currentMatch, judgeID)) {
+            return res.status(403).json({
+                message: 'You have already graded this match.'
+            });
         }
 
         const firstTeam = currentMatch.victimTeam;
