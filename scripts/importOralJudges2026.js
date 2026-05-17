@@ -103,7 +103,7 @@ async function main() {
     try {
         await connectToMongoDB();
 
-        const oralJudgesCollection = getCollection('oralJudges');
+        const oralJudgesCollection = getCollection('preliminaryJudges');
         const judges = readOralJudgesFromExcel();
 
         console.log(`Read ${judges.length} oral judges from Excel.`);

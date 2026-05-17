@@ -15,7 +15,7 @@ const {
  *******/
 router.post('/oral-judges/login', (req, res) => {
     return loginJudge(req, res, {
-        collectionName: 'oralJudges'
+        collectionName: 'preliminaryJudges'
     });
 });
 
@@ -24,7 +24,7 @@ router.post('/oral-judges/login', (req, res) => {
  ****************************/
 router.post('/oral-judges/request-password', (req, res) => {
     return requestJudgePassword(req, res, {
-        collectionName: 'oralJudges',
+        collectionName: 'preliminaryJudges',
         frontendBaseURL: process.env.FRONTEND_BASE_URL
     });
 });
@@ -34,7 +34,7 @@ router.post('/oral-judges/request-password', (req, res) => {
  ****************/
 router.post('/oral-judges/set-password', (req, res) => {
     return setJudgePassword(req, res,{
-        collectionName: 'oralJudges'
+        collectionName: 'preliminaryJudges'
     });
 });
 
@@ -43,7 +43,7 @@ router.post('/oral-judges/set-password', (req, res) => {
  ***************************/
 router.get('/oral-judges/me', requireJudgeAuth, async (req, res) =>{
     try {
-        const judgesCollection = getCollection('oralJudges');
+        const judgesCollection = getCollection('preliminaryJudges');
 
         const judgeRecord = await judgesCollection.findOne(
             { judgeID: Number(req.authJudgeID) },
