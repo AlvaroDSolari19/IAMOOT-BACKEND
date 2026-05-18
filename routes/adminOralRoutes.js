@@ -362,7 +362,7 @@ router.get('/admin/oral/preliminary-results', async (req, res) => {
 
         });
 
-        const preliminaryResults = Object.values(resultsByTeam.sort((firstTeam, secondTeam) => {
+        const preliminaryResults = Object.values(resultsByTeam).sort((firstTeam, secondTeam) => {
             
             if (firstTeam.numberOfWins !== secondTeam.numberOfWins) {
                 return secondTeam.numberOfWins - firstTeam.numberOfWins; 
@@ -373,7 +373,7 @@ router.get('/admin/oral/preliminary-results', async (req, res) => {
 
             return secondTeam.memorandumAverage - firstTeam.memorandumAverage; 
 
-        }));
+        });
 
         return res.status(200).json({
             ok: true, 
