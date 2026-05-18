@@ -3,6 +3,19 @@ const { getCollection } = require('../db');
 
 const router = express.Router(); 
 
+/********************
+ * HELPER FUNCTIONS *
+ ********************/
+const calculateAverageScore = (scoresByJudge) => {
+    if (!Array.isArray(scoresByJudge) || scoresByJudge.length === 0) return null; 
+
+    const totalScoreSum = scoresByJudge.reduce((totalSum, currentScore) => {
+        return totalSum + Number(currentScore.totalScore || 0);
+    }, 0);
+
+    return totalScoreSum / scoresByJudge.length; 
+}
+
 /***********************
  * PRELIMINARY MATCHES *
  ***********************/
@@ -270,6 +283,109 @@ router.patch('/admin/oral/preliminary-match/:matchID/winner', async (req, res) =
 /***********************
  * PRELIMINARY RESULTS *
  ***********************/
+router.get('/admin/oral/preliminary-results', async (req, res) => {
 
+    try {
+
+        const preliminaryMatchesCollection = getCollection('preliminaryMatches');
+        const memorandaCollection = getCollection('memoranda'); 
+
+        const preliminaryMatches = await preliminaryMatchesCollection.find({}).project({
+            _id: 0, 
+            stateTeam: 1, 
+            victimTeam: 1, 
+            stateTeamUniversity: 1, 
+            victimTeamUniversity: 1, 
+            winningTeam: 1
+        }).toArray(); 
+
+        const allMemoranda = await memorandaCollection.find({}).project({
+            _id: 0, 
+            teamID: 1, 
+            status: 1, 
+            scoresByJudge: 1, 
+            penaltyPoints: 1
+        }).toArray(); 
+
+        const getMemorandumAverage = (teamID) => {
+
+            const stateMemorandum = allMemoranda.find((memorandumRecord) => {
+                return memorandumRecord.teamID === teamID && memorandumRecord.status === 'State'; 
+            });
+
+            const victimMemorandum = allMemoranda.find((memorandumRecord) => {
+                return memorandumRecord.teamID === teamID && memorandumRecord.status === 'Victim';
+            });
+
+            const rawStateAverage = calculateAverageScore(stateMemorandum?.scoresByJudge);
+            const rawVictimAverage = calculateAverageScore(victimMemorandum?.scoresByJudge); 
+            
+            const statePenaltyPoints = Number(stateMemorandum?.penaltyPoints || 0); 
+            const victimPenaltyPoints = Number(victimMemorandum?.penaltyPoints || 0); 
+
+            const stateAverage = rawStateAverage !== null ? rawStateAverage - statePenaltyPoints : null; 
+            const victimAverage = rawVictimAverage !== null ? rawVictimAverage - victimPenaltyPoints : null; 
+
+            return stateAverage !== null && victimAverage !== null ? (stateAverage + victimAverage) / 2 : null; 
+
+        }
+
+        const resultsByTeam = {}; 
+
+        preliminaryMatches.forEach((currentMatch) => {
+
+            if (!resultsByTeam[currentMatch.stateTeam]){
+                resultsByTeam[currentMatch.stateTeam] = {
+                    teamID: currentMatch.stateTeam, 
+                    universityName: currentMatch.stateTeamUniversity, 
+                    numberOfWins: 0, 
+                    numberOfLosses: 0,
+                    memorandumAverage: getMemorandumAverage(currentMatch.stateTeam)
+                };
+            }
+
+            if (!resultsByTeam[currentMatch.victimTeam]){
+                resultsByTeam[currentMatch.victimTeam] = {
+                    teamID: currentMatch.victimTeam, 
+                    universityName: currentMatch.victimTeamUniversity, 
+                    numberOfWins: 0, 
+                    numberOfLosses: 0,
+                    memorandumAverage: getMemorandumAverage(currentMatch.victimTeam)
+                };
+            }
+
+            if (currentMatch.winningTeam){
+                const losingTeam = currentMatch.winningTeam === currentMatch.stateTeam ? currentMatch.victimTeam : currentMatch.stateTeam; 
+                resultsByTeam[currentMatch.winningTeam].numberOfWins = resultsByTeam[currentMatch.winningTeam].numberOfWins + 1; 
+                resultsByTeam[losingTeam].numberOfLosses = resultsByTeam[losingTeam].numberOfLosses + 1; 
+            }
+
+        });
+
+        const preliminaryResults = Object.values(resultsByTeam.sort((firstTeam, secondTeam) => {
+            
+            if (firstTeam.numberOfWins !== secondTeam.numberOfWins) {
+                return secondTeam.numberOfWins - firstTeam.numberOfWins; 
+            }
+
+            if (firstTeam.memorandumAverage === null) return 1; 
+            if (secondTeam.memorandumAverage === null) return -1; 
+
+            return secondTeam.memorandumAverage - firstTeam.memorandumAverage; 
+
+        }));
+
+        return res.status(200).json({
+            ok: true, 
+            message: 'Preliminary results retrieved successfully.', 
+            preliminaryResults
+        }); 
+
+    } catch (error) {
+        console.error('Preliminary results error: ', error); 
+        return res.status(500).json({ ok: false, message: 'Failed to retrieve preliminary results.' });
+    }
+
+});
 
 module.exports = router; 
