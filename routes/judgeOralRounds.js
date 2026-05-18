@@ -52,8 +52,9 @@ router.get('/oralrounds/me/matches', requireJudgeAuth, async(req, res) =>{
             secondTeamRole: 'State',
             roomNumber: currentMatch.roomNumber,
             matchTime: currentMatch.matchTime,
+            matchDay: currentMatch.matchDay,
             needsTranslation: currentMatch.needsTranslation,
-            matchLanguages: currentMatch.matchLanguages
+            matchLanguages: currentMatch.matchLanguages,
         }));
 
         return res.json(normalizedMatches);
@@ -125,7 +126,7 @@ router.get('/oralrounds/match/:matchID', requireJudgeAuth,async (req, res) => {
         }));
 
         /* This is saying get the value of matchID in currentMatch and put it in databaseMatchID */ 
-        res.json({ matchID, firstTeam, firstTeamRole: 'Victim', secondTeam, secondTeamRole: 'State', roomNumber: currentMatch.roomNumber, matchTime: currentMatch.matchTime, allSpeakers: speakerInfo });
+        res.json({ matchID, matchDay: currentMatch.matchDay, firstTeam, firstTeamRole: 'Victim', secondTeam, secondTeamRole: 'State', roomNumber: currentMatch.roomNumber, matchTime: currentMatch.matchTime, allSpeakers: speakerInfo });
 
     } catch (error){
         console.error(`Error retrieving match ${matchID}: ${error}`);
