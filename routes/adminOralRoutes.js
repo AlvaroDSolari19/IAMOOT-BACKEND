@@ -100,7 +100,7 @@ router.get('/admin/oral/judges', async (req, res) => {
         const judgeSearchValue = String(req.query.judgeID || '').trim(); 
         
         const preliminaryJudgesCollection = getCollection('preliminaryJudges'); 
-        const judgeQuery = judgeSearchValue ? { judgeID: { $regex: `^${judgeSearchValue}` } } : {}; 
+        const judgeQuery = judgeSearchValue ? { $expr: { $regexMatch: { input: { $toString: '$judgeID' }, regex: `^${judgeSearchValue}` } } } : {}; 
 
         const matchingJudges = await preliminaryJudgesCollection.find(judgeQuery).project({
             _id: 0, 
