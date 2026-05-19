@@ -16,6 +16,16 @@ const calculateAverageScore = (scoresByJudge) => {
     return totalScoreSum / scoresByJudge.length; 
 }
 
+const calculateSpeakerAverage = (receivedScores) => {
+    if (!Array.isArray(receivedScores) || receivedScores.length === 0) return null; 
+
+    const totalScoreSum = receivedScored.reduce((totalSum, currentScore) => {
+        return totalSum + Number(currentScore.score || 0); 
+    }, 0);
+
+    return totalScoreSum / receivedScores.length; 
+}
+
 /***********************
  * PRELIMINARY MATCHES *
  ***********************/
@@ -384,6 +394,54 @@ router.get('/admin/oral/preliminary-results', async (req, res) => {
     } catch (error) {
         console.error('Preliminary results error: ', error); 
         return res.status(500).json({ ok: false, message: 'Failed to retrieve preliminary results.' });
+    }
+
+});
+
+/*********************
+ * INDIVIDUAL AWARDS * 
+ *********************/
+router.get('/admin/oral/individual-awards', async (req, res) => {
+
+    try {
+
+        const speakersCollection = getCollection('speakers');
+
+        const allSpeakers = await speakersCollection.find({}).project({
+            _id:  0,
+            speakerID: 1, 
+            speakerName: 1, 
+            speakerLanguage: 1, 
+            universityName: 1, 
+            receivedScores: 1
+        }).toArray();
+
+        const individualAwards = allSpeakers.map((speakerRecord) => {
+            return {
+                speakerID: speakerRecord.speakerID, 
+                speakerName: speakerRecord.speakerName, 
+                speakerLanguage: speakerRecord.speakerLanguage, 
+                universityName: speakerRecord.universityName, 
+                speakerAverage: calculateSpeakerAverage(speakerRecord.receivedScores)
+            };
+        });
+
+        individualAwards.sort((firstSpeaker, secondSpeaker) => {
+            if (firstSpeaker.speakerAverage === null) return 1; 
+            if (secondSpeaker.speakerAverage === null) return -1;
+
+            return secondSpeaker.speakerAverage - firstSpeaker.speakerAverage; 
+        }); 
+
+        return res.status(200).json({
+            ok: true, 
+            message: 'Individual awards retrieved successfully.', 
+            individualAwards
+        });
+
+    } catch (error) {
+        console.error('Individual awards error: ', error); 
+        return res.status(500).json({ ok: false, message: 'Failed to retrieve individual awards.' });
     }
 
 });
