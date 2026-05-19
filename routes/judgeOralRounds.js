@@ -139,6 +139,11 @@ router.post('/oralrounds/submitscores', requireJudgeAuth,async (req, res) => {
     const judgeID = Number(req.authJudgeID);
     const { matchID, finalScores } = req.body; 
 
+    const submittedAt = new Date(); 
+    const submittedAtET = submittedAt.toLocaleString('en-US', {
+        timeZone: 'America/New_York'
+    });
+
     if (!Number.isFinite(judgeID) || !matchID || !Array.isArray(finalScores)){ 
         return res.status(400).json({ message: 'Missing required fields' });
     }
@@ -158,7 +163,9 @@ router.post('/oralrounds/submitscores', requireJudgeAuth,async (req, res) => {
                 { $push: { 
                     receivedScores: {
                         judgeID,
-                        score: finalScore
+                        matchID, 
+                        score: finalScore,
+                        submittedAtET
                     }
                 }
             }
