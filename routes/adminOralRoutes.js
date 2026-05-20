@@ -19,7 +19,7 @@ const calculateAverageScore = (scoresByJudge) => {
 const calculateSpeakerAverage = (receivedScores) => {
     if (!Array.isArray(receivedScores) || receivedScores.length === 0) return null; 
 
-    const totalScoreSum = receivedScored.reduce((totalSum, currentScore) => {
+    const totalScoreSum = receivedScores.reduce((totalSum, currentScore) => {
         return totalSum + Number(currentScore.score || 0); 
     }, 0);
 
