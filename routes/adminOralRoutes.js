@@ -457,4 +457,65 @@ router.get('/admin/oral/individual-awards', async (req, res) => {
 
 });
 
+/*********************
+ * SEMIFINAL MATCHES *
+ *********************/
+router.get('/admin/oral/semifinals/matches', async (req,res) => {
+
+    try {
+        
+        const semifinalMatchesCollection = getCollection('semifinalMatches'); 
+        const teamsCollection = getCollection('teams'); 
+
+        const semifinalMatches = await semifinalMatchesCollection.find({}).toArray(); 
+
+        const teamIDs = semifinalMatches.flatMap((matchRecord) => [
+            String(matchRecord.stateTeam),
+            String(matchRecord.victimTeam)
+        ]);
+
+        const teamRecords = await teamsCollection.find({ teamID: { $in: teamIDs } }).toArray(); 
+        
+        const teamMap = {};
+
+        teamRecords.forEach((teamRecord) => {
+            teamMap[String(teamRecord.teamID)] = teamRecord; 
+        });
+
+        const enrichedSemifinalMatches = semifinalMatches.map((matchRecord) => {
+            const stateTeamRecord = teamMap[String(matchRecord.stateTeam)];
+            const victimTeamRecord = teamMap[String(matchRecord.victimTeam)];
+
+            return {
+                matchID: matchRecord.matchID, 
+                stateTeam: matchRecord.stateTeam, 
+                victimTeam: matchRecord.victimTeam, 
+                stateTeamUniversity: stateTeamRecord?.universityName || 'Unknown University', 
+                victimTeamUniversity: victimTeamRecord?.universityName || 'Unknown University', 
+                matchDay: matchRecord.matchDay, 
+                matchDate: matchRecord.matchDate, 
+                matchTime: matchRecord.matchTime, 
+                roomNumber: matchRecord.roomNumber
+            }
+        });
+
+        enrichedSemifinalMatches.sort((firstMatch, secondMatch) => {
+            const firstMatchDateTime = new Date(`${firstMatch.matchDate} ${firstMatch.matchTime}`); 
+            const secondMatchDateTime = new Date(`${secondMatch.matchDate} ${secondMatch.matchTime}`);
+            return firstMatchDateTime - secondMatchDateTime; 
+        }); 
+
+        res.status(200).json({
+            ok: true, 
+            message: 'Semifinal matches retrieved successfully.', 
+            semifinalMatches: enrichedSemifinalMatches
+        });
+
+    } catch (error){
+        console.error('Error retrieving semifinal matches: ', error); 
+        res.status(500).json({ ok: false, message: 'Server error while retrieving semifinal matches.' });
+    }
+
+});
+
 module.exports = router; 

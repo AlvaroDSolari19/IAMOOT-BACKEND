@@ -49,7 +49,7 @@ async function generateSemifinalMatches(){
                 victimTeam: String(victimTeam.teamID), 
                 roomNumber: null, 
                 matchDay: 'Thursday', 
-                matchDate: null, 
+                matchDate: '05-21-2026', 
                 matchTime: null, 
                 assignedJudges: [],
                 gradedJudges: [] 
