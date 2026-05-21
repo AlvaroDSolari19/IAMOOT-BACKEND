@@ -577,10 +577,7 @@ router.get('/admin/oral/semifinal-match/:matchID', async (req, res) => {
 /***************************
  * SEARCH SEMIFINAL JUDGES *
  ***************************/
-/**********************
- * SEARCH ORAL JUDGES *
- **********************/
-router.get('/admin/oral/judges', async (req, res) => {
+router.get('/admin/oral/semifinal-judges', async (req, res) => {
 
     try {
 
