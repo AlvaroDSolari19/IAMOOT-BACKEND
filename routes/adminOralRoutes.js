@@ -518,4 +518,60 @@ router.get('/admin/oral/semifinals/matches', async (req,res) => {
 
 });
 
+/***************************
+ * SEMIFINAL MATCH DETAILS *
+ ***************************/
+router.get('/admin/oral/semifinal-match/:matchID', async (req, res) => {
+
+    try {
+
+        const { matchID } = req.params; 
+
+        const semifinalMatchesCollection = getCollection('semifinalMatches'); 
+        const teamsCollection = getCollection('teams'); 
+
+        const matchRecord = await semifinalMatchesCollection.findOne({ matchID }); 
+        if (!matchRecord) return res.status(404).json({ ok: false, message: 'Semifinal match not found.' });
+
+        const teamIDs = [
+            String(matchRecord.stateTeam), 
+            String(matchRecord.victimTeam)
+        ];
+
+        const teamRecords = await teamsCollection.find({ teamID: { $in: teamIDs } }).toArray();
+
+        const teamMap = {};
+
+        teamRecords.forEach((teamRecord) => {
+            teamMap[String(teamRecord.teamID)] = teamRecord; 
+        }); 
+
+        const stateTeamRecord = teamMap[String(matchRecord.stateTeam)]; 
+        const victimTeamRecord = teamMap[String(matchRecord.victimTeam)]; 
+
+        const enrichedMatch = {
+            matchID: matchRecord.matchID, 
+            stateTeam: matchRecord.stateTeam, 
+            victimTeam: matchRecord.victimTeam, 
+            stateTeamUniversity: stateTeamRecord?.universityName || 'Unknown University', 
+            victimTeamUniversity: victimTeamRecord?.universityName || 'Unknown University', 
+            matchDay: matchRecord.matchDay, 
+            matchTime: matchRecord.matchTime, 
+            roomNumber: matchRecord.roomNumber, 
+            assignedJudges: matchRecord.assignedJudges || []
+        };
+
+        res.status(200).json({
+            ok: true, 
+            message: 'Semifinal match retrieved successfully.', 
+            match: enrichedMatch
+        });
+
+    } catch (error) {
+        console.error('Error retrieving semifinal match: ', error);
+        res.status(500).json({ ok: false, message: 'Server error while retrieving semifinal match.' });
+    }
+
+});
+
 module.exports = router; 
