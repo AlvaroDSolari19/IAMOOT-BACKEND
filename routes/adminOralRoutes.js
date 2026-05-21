@@ -611,4 +611,62 @@ router.get('/admin/oral/semifinal-judges', async (req, res) => {
 
 });
 
+/*************************
+ * ADD SEMIFINAL JUDGE *
+ *************************/
+router.patch('/admin/oral/semifinal-match/:matchID/judges', async (req, res) => {
+
+    try {
+
+        const matchID = String(req.params.matchID || '').trim();
+        const judgeID = Number(req.body.judgeID);
+
+        if (!matchID) return res.status(400).json({ ok: false, message: 'Match ID is required.' });
+        if (Number.isNaN(judgeID)) return res.status(400).json({ ok: false, message: 'Judge ID is required.' });
+
+        const semifinalMatchesCollection = getCollection('semifinalMatches');
+        const preliminaryJudgesCollection = getCollection('preliminaryJudges');
+
+        const judgeRecord = await preliminaryJudgesCollection.findOne(
+            { 
+                judgeID,
+                participatesInSemifinals: true 
+            },
+            {
+                projection: {
+                    _id: 0,
+                    judgeID: 1,
+                    fullName: 1
+                }
+            }
+        );
+
+        if (!judgeRecord) return res.status(404).json({ ok: false, message: 'Semifinal judge was not found.' });
+
+        const assignedJudge = {
+            judgeID: judgeRecord.judgeID,
+            judgeName: judgeRecord.fullName
+        };
+
+        await semifinalMatchesCollection.updateOne(
+            { matchID },
+            {
+                $push: {
+                    assignedJudges: assignedJudge
+                }
+            }
+        );
+
+        return res.status(200).json({
+            ok: true,
+            message: 'Semifinal judge added successfully.'
+        })
+
+    } catch (error) {
+        console.error('Add preliminary judge error: ', error);
+        return res.status(500).json({ ok: false, message: 'Failed to add judge.' });
+    }
+
+});
+
 module.exports = router; 
