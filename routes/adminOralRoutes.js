@@ -574,4 +574,44 @@ router.get('/admin/oral/semifinal-match/:matchID', async (req, res) => {
 
 });
 
+/***************************
+ * SEARCH SEMIFINAL JUDGES *
+ ***************************/
+/**********************
+ * SEARCH ORAL JUDGES *
+ **********************/
+router.get('/admin/oral/judges', async (req, res) => {
+
+    try {
+
+        const judgeSearchValue = String(req.query.judgeID || '').trim();
+
+        const preliminaryJudgesCollection = getCollection('preliminaryJudges');
+        const judgeQuery = { participatesInSemifinals: true };
+        
+        if (judgeSearchValue){
+            judgeQuery.$expr = { $regexMatch: { input: { $toString: '$judgeID' }, regex: `^${judgeSearchValue}` } }
+        } 
+
+        const matchingJudges = await preliminaryJudgesCollection.find(judgeQuery).project({
+            _id: 0,
+            judgeID: 1,
+            fullName: 1
+        }).sort({
+            judgeID: 1
+        }).toArray();
+
+        return res.status(200).json({
+            ok: true,
+            message: 'Semifinal judges retrieved successfully.',
+            matchingJudges
+        });
+
+    } catch (error) {
+        console.error('Oral judges search error: ', error);
+        return res.status(500).json({ ok: false, message: 'Failed to retrieve oral judges.' });
+    }
+
+});
+
 module.exports = router; 
