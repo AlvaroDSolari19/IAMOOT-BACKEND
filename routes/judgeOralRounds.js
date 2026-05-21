@@ -255,8 +255,7 @@ router.post('/oralrounds/submitscores', requireJudgeAuth, async (req, res) => {
             {
                 $addToSet: {
                     gradedJudges: {
-                        judgeID,
-                        submittedAtET
+                        judgeID
                     }
                 }
             } 
