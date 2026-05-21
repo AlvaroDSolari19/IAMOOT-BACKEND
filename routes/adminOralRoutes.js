@@ -707,4 +707,118 @@ router.patch('/admin/oral/semifinal-match/:matchID/judges/remove', async (req, r
 
 });
 
+/*********************
+ * SEMIFINAL RESULTS *
+ *********************/
+router.get('/admin/oral/semifinals/results', async (req,res) => {
+
+    try {
+
+        const semifinalMatchesCollection = getCollection('semifinalMatches'); 
+        const teamsCollection = getCollection('teams'); 
+        const speakersCollection = getCollection('speakers'); 
+
+        const semifinalMatches = await semifinalMatchesCollection.find({}).toArray(); 
+
+        const teamIDs = semifinalMatches.flatMap((matchRecord) => [
+            String(matchRecord.stateTeam), 
+            String(matchRecord.victimTeam)
+        ]);
+
+        const teamRecords = await teamsCollection.find({ teamID: { $in: teamIDs } }).toArray(); 
+        const speakerRecords = await speakersCollection.find({ teamID: { $in: teamIDs.map(Number) } }).toArray(); 
+
+        const teamMap = {}; 
+
+        teamRecords.forEach((teamRecord) => {
+            teamMap[String(teamRecord.teamID)] = teamRecord; 
+        });
+
+        const speakersByTeam = {}; 
+
+        speakerRecords.forEach((speakerRecord) => {
+            const speakerTeamID = String(speakerRecord.teamID); 
+
+            if (!speakersByTeam[speakerTeamID]){
+                speakersByTeam[speakerTeamID] = [];
+            }
+
+            speakersByTeam[speakerTeamID].push(speakerRecord); 
+        })
+
+        const calculateSemifinalAverage = (speakerRecord) => {
+
+            if (!speakerRecord?.receivedScores?.length) return null;
+
+            const semifinalScores = speakerRecord.receivedScores.filter((scoreRecord) => {
+                return String(scoreRecord.matchID).startsWith('S'); 
+            });
+
+            if (semifinalScores.length === 0) return null; 
+
+            const semifinalScoreTotal = semifinalScores.reduce((totalScore, scoreRecord) => {
+                return totalScore + Number(scoreRecord.score); 
+            }, 0);
+
+            return semifinalScoreTotal / semifinalScores.length; 
+
+        }
+
+        const buildTeamResult = (teamID, teamRole) => {
+            const teamRecord = teamMap[String(teamID)]; 
+            const teamSpeakers = speakersByTeam[String(teamID)] || []; 
+
+            const speakerOne = teamSpeakers.find((speakerRecord) => {
+                return String(speakerRecord.speakerID).endsWith('A');
+            });
+
+            const speakerTwo = teamSpeakers.find((speakerRecord) => {
+                return String(speakerRecord.speakerID).endsWith('B'); 
+            })
+
+            const speakerOneAverage = calculateSemifinalAverage(speakerOne);
+            const speakerTwoAverage = calculateSemifinalAverage(speakerTwo); 
+
+            let semifinalAverage = null; 
+            if (speakerOneAverage !== null && speakerTwoAverage !== null){
+                semifinalAverage = (speakerOneAverage + speakerTwoAverage) / 2; 
+            }
+
+            return {
+                teamID: String(teamID), 
+                universityName: teamRecord?.universityName || 'Unknown University',
+                teamRole, 
+                speakerOneName: speakerOne?.speakerName || 'N/A', 
+                speakerOneAverage, 
+                speakerTwoName: speakerTwo?.speakerName || 'N/A', 
+                speakerTwoAverage, 
+                semifinalAverage
+            };
+        }
+
+        const semifinalResults = semifinalMatches.flatMap((matchRecord) => [
+            buildTeamResult(matchRecord.stateTeam, 'State'), 
+            buildTeamResult(matchRecord.victimTeam, 'Victim')
+        ]); 
+
+        semifinalResults.sort((firstTeam, secondTeam) => {
+            if (firstTeam.semifinalAverage === null && secondTeam.semifinalAverage === null) return 0; 
+            if (firstTeam.semifinalAverage === null) return 1; 
+            if (secondTeam.semifinalAverage === null) return -1; 
+            return secondTeam.semifinalAverage - firstTeam.semifinalAverage; 
+        });
+
+        return res.status(200).json({
+            ok: true, 
+            message: 'Semifinal results retrieved successfully',
+            semifinalResults
+        });
+
+    } catch (error){
+        console.error('Semifinal results errors: ', error); 
+        return res.status(500).json({ ok: false, message: 'Failed to retrieve semifinal results' }); 
+    }
+
+});
+
 module.exports = router; 
