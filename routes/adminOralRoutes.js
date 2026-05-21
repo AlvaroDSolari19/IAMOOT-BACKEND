@@ -669,4 +669,42 @@ router.patch('/admin/oral/semifinal-match/:matchID/judges', async (req, res) => 
 
 });
 
+/****************************
+ * REMOVE SEMIFINAL JUDGE *
+ ****************************/
+router.patch('/admin/oral/semifinal-match/:matchID/judges/remove', async (req, res) => {
+
+    try {
+
+        const matchID = String(req.params.matchID || '').trim();
+        const judgeID = Number(req.body.judgeID);
+
+        if (!matchID) return res.status(400).json({ ok: false, message: 'Match ID is required.' });
+        if (Number.isNaN(judgeID)) return res.status(400).json({ ok: false, message: 'Judge ID is required.' });
+
+        const semifinalMatchesCollection = getCollection('semifinalMatches');
+
+        const updateResult = await semifinalMatchesCollection.updateOne(
+            { matchID },
+            {
+                $pull: {
+                    assignedJudges: { judgeID }
+                }
+            }
+        );
+
+        if (updateResult.matchedCount === 0) return res.status(404).json({ ok: false, message: 'Preliminary match was not found.' });
+
+        return res.status(200).json({
+            ok: true,
+            message: 'Judge removed successfully.'
+        });
+
+    } catch (error) {
+        console.error('Remove preliminary judge error: ', error);
+        return res.status(500).json({ ok: false, message: 'Failed to remove judge.' });
+    }
+
+});
+
 module.exports = router; 
